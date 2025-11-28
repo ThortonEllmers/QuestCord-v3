@@ -3,6 +3,15 @@ const router = express.Router();
 const { GlobalStatsModel, LeaderboardModel, StaffModel } = require('../../database/models');
 const config = require('../../../config.json');
 
+// Health check endpoint
+router.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: Date.now(),
+        service: 'QuestCord Web Server'
+    });
+});
+
 router.get('/', async (req, res) => {
     try {
         const stats = GlobalStatsModel.get();

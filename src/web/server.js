@@ -23,34 +23,13 @@ async function startWebServer(client) {
 
     app.set('trust proxy', true);
 
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-
-    if (isDevelopment) {
-        app.use(helmet({
-            contentSecurityPolicy: false,
-            crossOriginEmbedderPolicy: false,
-            crossOriginOpenerPolicy: false,
-            crossOriginResourcePolicy: false,
-            originAgentCluster: false
-        }));
-    } else {
-        app.use(helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "http://questcord.fun"],
-                    fontSrc: ["'self'", "https://fonts.gstatic.com"],
-                    scriptSrc: ["'self'", "'unsafe-inline'"],
-                    imgSrc: ["'self'", "data:", "https:", "http:"],
-                    connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"]
-                },
-                upgradeInsecureRequests: null  // Don't force HTTPS - Cloudflare handles it
-            },
-            crossOriginOpenerPolicy: false,  // Disable for Cloudflare compatibility
-            crossOriginResourcePolicy: false,  // Disable for Cloudflare compatibility
-            originAgentCluster: false  // Disable for Cloudflare compatibility
-        }));
-    }
+    // Simple Helmet configuration for security without breaking functionality
+    app.use(helmet({
+        contentSecurityPolicy: false,  // Let browser handle CSP for now
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false
+    }));
 
     app.use(cors({
         origin: true,
@@ -116,9 +95,23 @@ async function startWebServer(client) {
     updateStaffRoles(client, broadcastStaff);
 
     const port = process.env.NODE_ENV === 'production' ? config.productionPort : config.port;
+    const host = '0.0.0.0'; // Bind to all network interfaces
 
-    server.listen(port, () => {
-        console.log(`Web server running on port ${port}`);
+    server.listen(port, host, () => {
+        console.log(`[WEB SERVER] Successfully started`);
+        console.log(`[WEB SERVER] Listening on ${host}:${port}`);
+        console.log(`[WEB SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`[WEB SERVER] Access at: http://localhost:${port}`);
+    });
+
+    server.on('error', (error) => {
+        console.error('[WEB SERVER] Failed to start:', error.message);
+        if (error.code === 'EADDRINUSE') {
+            console.error(`[WEB SERVER] Port ${port} is already in use. Run: fuser -k ${port}/tcp`);
+        } else if (error.code === 'EACCES') {
+            console.error(`[WEB SERVER] Permission denied. Port ${port} requires elevated privileges.`);
+        }
+        throw error;
     });
 
     return server;

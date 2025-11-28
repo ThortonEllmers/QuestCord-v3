@@ -36,7 +36,13 @@ async function main() {
         LeaderboardScheduler.initialize();
 
         console.log('Starting web server...');
-        await startWebServer(client);
+        try {
+            await startWebServer(client);
+            console.log('[SUCCESS] Web server started successfully');
+        } catch (webError) {
+            console.error('[ERROR] Web server failed to start:', webError);
+            throw webError;
+        }
 
         console.log('QuestCord initialized successfully');
 
