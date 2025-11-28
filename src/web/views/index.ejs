@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#5865f2">
     <title>QuestCord - Quest Across Discord</title>
+    <meta name="description" content="Complete quests, defeat bosses, and climb the global leaderboard in this immersive Discord RPG experience">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +17,10 @@
 <body>
     <div class="hero">
         <div class="container">
-            <h1 class="hero-title">QuestCord</h1>
+            <div class="hero-title-container">
+                <img src="/images/compass-icon.png" alt="Compass" class="hero-icon" onerror="this.style.display='none'">
+                <h1 class="hero-title">QuestCord</h1>
+            </div>
             <p class="hero-subtitle">Quest across the Discord universe</p>
             <p class="hero-description">Complete quests, defeat bosses, and climb the global leaderboard in this immersive Discord RPG experience</p>
             <div class="hero-buttons">
@@ -43,25 +51,32 @@
 
     <div id="about" class="about-section">
         <div class="container">
-            <h2 class="section-title">What is QuestCord?</h2>
-            <p class="section-description">QuestCord transforms Discord servers into a virtual world where you can complete quests, battle bosses, and earn rewards. Each server becomes a unique location with daily rotating quests.</p>
+            <div class="content-with-image">
+                <div class="content-text">
+                    <h2 class="section-title">What is QuestCord?</h2>
+                    <p class="section-description">QuestCord transforms Discord servers into a virtual world where you can complete quests, battle bosses, and earn rewards. Each server becomes a unique location with daily rotating quests.</p>
 
-            <div class="features-grid">
-                <div class="feature-card">
-                    <h3>Daily Quests</h3>
-                    <p>Complete 5 unique quests per server each day. Travel between servers to continue your adventure.</p>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <h3>🎮 Daily Quests</h3>
+                            <p>Complete 5 unique quests per server each day. Travel between servers to continue your adventure.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>⚔️ Boss Battles</h3>
+                            <p>Bosses randomly spawn across servers. Team up with other players to defeat them and earn massive rewards.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>🏆 Global Leaderboard</h3>
+                            <p>Compete with players worldwide. Top 3 players each month receive exclusive rewards.</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>💰 Economy System</h3>
+                            <p>Earn currency and gems from quests and bosses. Use them to purchase rare items and upgrades.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature-card">
-                    <h3>Boss Battles</h3>
-                    <p>Bosses randomly spawn across servers. Team up with other players to defeat them and earn massive rewards.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Global Leaderboard</h3>
-                    <p>Compete with players worldwide. Top 3 players each month receive exclusive rewards.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Economy System</h3>
-                    <p>Earn currency and gems from quests and bosses. Use them to purchase rare items and upgrades.</p>
+                <div class="content-image">
+                    <img src="/images/quest-example.png" alt="Quest Example" onerror="this.src='https://via.placeholder.com/500x600/7c3aed/ffffff?text=Quest+System'">
                 </div>
             </div>
         </div>
@@ -69,34 +84,71 @@
 
     <div class="activity-section">
         <div class="container">
-            <h2 class="section-title">Live Activity</h2>
-            <div class="activity-container" id="activity-feed">
-                <div class="activity-item">Loading activity...</div>
+            <div class="content-with-image reverse">
+                <div class="content-image">
+                    <img src="/images/activity-example.png" alt="Live Activity" onerror="this.src='https://via.placeholder.com/500x600/5865f2/ffffff?text=Live+Activity'">
+                </div>
+                <div class="content-text">
+                    <h2 class="section-title">Live Activity</h2>
+                    <p class="section-description">See what's happening across the QuestCord universe in real-time. Watch as players complete quests, defeat bosses, and climb the ranks!</p>
+                    <div class="activity-container" id="activity-feed">
+                        <div class="activity-item">Loading activity...</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="leaderboard-section">
         <div class="container">
-            <h2 class="section-title">Global Leaderboard</h2>
-            <div class="leaderboard-container">
-                <% if (topPlayers.length === 0) { %>
-                    <p class="empty-state">No rankings yet. Be the first to compete!</p>
-                <% } else { %>
-                    <% topPlayers.forEach((player, index) => { %>
-                        <div class="leaderboard-item rank-<%= index + 1 %>">
-                            <div class="rank-badge">
-                                <% if (index === 0) { %>🥇
-                                <% } else if (index === 1) { %>🥈
-                                <% } else if (index === 2) { %>🥉
-                                <% } else { %><%= index + 1 %>
-                                <% } %>
+            <div class="content-with-image">
+                <div class="content-text">
+                    <h2 class="section-title">Global Leaderboard</h2>
+                    <p class="section-description">Compete with players from around the world! Top 3 players each month receive exclusive rewards and eternal glory.</p>
+                    <div class="leaderboard-container">
+                        <% if (topPlayers.length === 0) { %>
+                            <p class="empty-state">No rankings yet. Be the first to compete!</p>
+                        <% } else { %>
+                            <div class="leaderboard-grid">
+                                <!-- Top 3 - Left Column -->
+                                <div class="leaderboard-column top-three">
+                                    <h3 class="column-title">Top 3</h3>
+                                    <% topPlayers.slice(0, 3).forEach((player, index) => { %>
+                                        <div class="leaderboard-item rank-<%= index + 1 %>">
+                                            <div class="rank-badge">
+                                                <% if (index === 0) { %>🥇
+                                                <% } else if (index === 1) { %>🥈
+                                                <% } else if (index === 2) { %>🥉
+                                                <% } %>
+                                            </div>
+                                            <div class="player-info">
+                                                <div class="player-name"><%= player.username %></div>
+                                                <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                </div>
+
+                                <!-- Ranks 4-10 - Right Column -->
+                                <div class="leaderboard-column rest">
+                                    <h3 class="column-title">Top 4-10</h3>
+                                    <% topPlayers.slice(3, 10).forEach((player, index) => { %>
+                                        <div class="leaderboard-item rank-<%= index + 4 %>">
+                                            <div class="rank-badge"><%= index + 4 %></div>
+                                            <div class="player-info">
+                                                <div class="player-name"><%= player.username %></div>
+                                                <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                </div>
                             </div>
-                            <div class="player-name"><%= player.username %></div>
-                            <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
-                        </div>
-                    <% }); %>
-                <% } %>
+                        <% } %>
+                    </div>
+                </div>
+                <div class="content-image">
+                    <img src="/images/leaderboard-example.png" alt="Leaderboard" onerror="this.src='https://via.placeholder.com/500x600/fbbf24/000000?text=Leaderboard'">
+                </div>
             </div>
         </div>
     </div>
@@ -151,6 +203,27 @@
 
     <%- include('partials/footer') %>
 
+    <script>
+        // Scroll to top on page load and remove hash
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        window.addEventListener('load', function() {
+            // Remove hash from URL
+            if (window.location.hash) {
+                history.replaceState(null, null, window.location.pathname);
+            }
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        });
+
+        // Also scroll to top on page refresh
+        window.addEventListener('beforeunload', function() {
+            window.scrollTo(0, 0);
+        });
+    </script>
     <script src="/js/activity.js"></script>
 </body>
 </html>
