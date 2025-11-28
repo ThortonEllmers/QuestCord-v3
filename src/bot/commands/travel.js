@@ -26,8 +26,8 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.primary)
-            .setTitle('Available Servers')
-            .setDescription('**How questing works:**\n1. You can complete 5 quests per server each day\n2. Use `/quests` in any server below to see available quests\n3. Use `/complete <number>` to complete a quest\n4. Travel to other servers for more quests!\n\n**Your Available Servers:**');
+            .setTitle('🗺️ Travel to Other Servers')
+            .setDescription('**How questing works:**\n1. You can complete **5 quests per server** each day\n2. Use `/quests` in any server below to see and accept quests\n3. Click the button to start interactive quest tasks\n4. Travel to other servers for more quests!\n\n**How to travel:**\n• You can quest in any Discord server you\'re already a member of\n• The bot must be in that server and opted-in (`/optin`)\n• To find new servers, check out Discord server lists or ask friends!\n\n**Your Available Servers:**');
 
         if (availableServers.length === 0) {
             embed.addFields({

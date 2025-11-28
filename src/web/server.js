@@ -38,13 +38,17 @@ async function startWebServer(client) {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "http://questcord.fun"],
                     fontSrc: ["'self'", "https://fonts.gstatic.com"],
                     scriptSrc: ["'self'", "'unsafe-inline'"],
-                    imgSrc: ["'self'", "data:", "https:"],
-                    connectSrc: ["'self'", "ws:", "wss:"]
-                }
-            }
+                    imgSrc: ["'self'", "data:", "https:", "http:"],
+                    connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"]
+                },
+                upgradeInsecureRequests: null  // Don't force HTTPS - Cloudflare handles it
+            },
+            crossOriginOpenerPolicy: false,  // Disable for Cloudflare compatibility
+            crossOriginResourcePolicy: false,  // Disable for Cloudflare compatibility
+            originAgentCluster: false  // Disable for Cloudflare compatibility
         }));
     }
 

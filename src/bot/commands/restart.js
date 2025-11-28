@@ -1,5 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { checkPermission, ROLES } = require('../utils/permissions');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { isStaff, isDeveloper, isOwner } = require('../utils/permissions');
 const { getReportingInstance } = require('../../utils/reportingSystem');
 
 module.exports = {
@@ -13,8 +13,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        const hasPermission = checkPermission(interaction.user.id, ROLES.DEVELOPER) ||
-                            checkPermission(interaction.user.id, ROLES.STAFF);
+        const hasPermission = await isStaff(interaction) || await isDeveloper(interaction) || isOwner(interaction.user.id);
 
         if (!hasPermission) {
             return interaction.reply({

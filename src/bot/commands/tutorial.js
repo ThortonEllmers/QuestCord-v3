@@ -22,19 +22,23 @@ module.exports = {
 
         const questingEmbed = new EmbedBuilder()
             .setColor(config.theme.colors.secondary)
-            .setTitle('Questing System')
+            .setTitle('🎮 Interactive Questing System')
             .addFields(
                 {
                     name: 'Daily Quests',
                     value: 'Every server has 5 unique quests that rotate daily at midnight NZ time. Quests vary in difficulty and rewards.'
                 },
                 {
-                    name: 'Completing Quests',
-                    value: 'Use `/quests` to see available quests, then `/complete <quest number>` to complete one. Each quest can only be completed once per day.'
+                    name: 'Accepting & Completing Quests',
+                    value: 'Use `/quests` to see available quests. Click the button to accept a quest and start its interactive task. Each quest can only be completed once per day.'
+                },
+                {
+                    name: 'Quest Types',
+                    value: '🗡️ **Combat** - Button mashing battle\n🌿 **Gathering** - Wait for resources\n🗺️ **Exploration** - Multi-step journey\n📦 **Delivery** - Timed travel\n💬 **Social** - Instant completion'
                 },
                 {
                     name: 'Traveling',
-                    value: 'You can only do 5 quests per server per day. Use `/travel` to move to different servers and continue questing.'
+                    value: 'You can only do 5 quests per server per day. Use `/travel` to find other servers and continue questing.'
                 }
             );
 

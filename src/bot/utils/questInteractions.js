@@ -1,0 +1,375 @@
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { UserModel, QuestModel, UserQuestModel, ServerModel, GlobalStatsModel, LeaderboardModel } = require('../../database/models');
+const { LevelSystem } = require('../../utils/levelSystem');
+const { QuestScaling } = require('./questScaling');
+const { getReportingInstance } = require('../../utils/reportingSystem');
+const config = require('../../../config.json');
+
+// Store active quests in memory
+const activeQuests = new Map(); // userId_questId -> questData
+
+async function handleQuestAccept(interaction) {
+    if (!interaction.customId.startsWith('accept_quest_')) return;
+
+    const questId = parseInt(interaction.customId.replace('accept_quest_', ''));
+    const quest = QuestModel.findById(questId);
+
+    if (!quest) {
+        return interaction.reply({
+            content: 'Quest not found.',
+            ephemeral: true
+        });
+    }
+
+    let user = UserModel.findByDiscordId(interaction.user.id);
+    if (!user) {
+        UserModel.create(interaction.user.id, interaction.user.username);
+        user = UserModel.findByDiscordId(interaction.user.id);
+    }
+
+    // Check if already completed
+    const existingQuest = UserQuestModel.getUserQuests(user.id, interaction.guild.id).find(uq => uq.quest_id === quest.id);
+    if (existingQuest && existingQuest.completed) {
+        return interaction.reply({
+            content: 'You have already completed this quest today.',
+            ephemeral: true
+        });
+    }
+
+    // Check if hit daily limit
+    const completedCount = UserQuestModel.getCompletedCount(user.id, interaction.guild.id);
+    if (completedCount >= config.quest.questsPerServer) {
+        return interaction.reply({
+            content: `You have completed all ${config.quest.questsPerServer} quests in this server today. Use \`/travel\` to visit another server.`,
+            ephemeral: true
+        });
+    }
+
+    // Assign quest if not already assigned
+    if (!existingQuest) {
+        UserQuestModel.assignQuest(user.id, quest.id);
+    }
+
+    // Route to appropriate quest type handler
+    switch (quest.type) {
+        case 'combat':
+            await startCombatQuest(interaction, quest, user);
+            break;
+        case 'gathering':
+            await startGatheringQuest(interaction, quest, user);
+            break;
+        case 'exploration':
+            await startExplorationQuest(interaction, quest, user);
+            break;
+        case 'delivery':
+            await startDeliveryQuest(interaction, quest, user);
+            break;
+        case 'social':
+            await startSocialQuest(interaction, quest, user);
+            break;
+        default:
+            await startGenericQuest(interaction, quest, user);
+    }
+}
+
+// ===== COMBAT QUEST: Button mashing minigame =====
+async function startCombatQuest(interaction, quest, user) {
+    const key = `${user.id}_${quest.id}`;
+    const clicks = 0;
+    const maxClicks = QuestScaling.getCombatClicks(user.level, quest.difficulty);
+    const timeLimit = QuestScaling.getCombatTimeLimit(user.level, quest.difficulty);
+
+    activeQuests.set(key, { clicks, maxClicks, startTime: Date.now(), timeLimit });
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTitle(`⚔️ ${quest.quest_name}`)
+        .setDescription(`${quest.description}\n\n**Click the button below to attack!**\nDefeat your enemy by dealing ${maxClicks} attacks!\n\nTime limit: ${timeLimit} seconds`)
+        .addFields({
+            name: 'Progress',
+            value: `${clicks}/${maxClicks} attacks`
+        });
+
+    const button = new ButtonBuilder()
+        .setCustomId(`combat_attack_${quest.id}`)
+        .setLabel('⚔️ Attack!')
+        .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(button);
+
+    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+}
+
+async function handleCombatAttack(interaction) {
+    if (!interaction.customId.startsWith('combat_attack_')) return;
+
+    const questId = parseInt(interaction.customId.replace('combat_attack_', ''));
+    const user = UserModel.findByDiscordId(interaction.user.id);
+    const quest = QuestModel.findById(questId);
+    const key = `${user.id}_${quest.id}`;
+
+    const questData = activeQuests.get(key);
+    if (!questData) {
+        return interaction.reply({
+            content: 'Quest session expired. Please start the quest again.',
+            ephemeral: true
+        });
+    }
+
+    // Check time limit
+    const elapsed = (Date.now() - questData.startTime) / 1000;
+    if (elapsed > questData.timeLimit) {
+        activeQuests.delete(key);
+        return interaction.update({
+            content: '❌ Time\'s up! You failed to defeat the enemy in time. Try again later.',
+            embeds: [],
+            components: []
+        });
+    }
+
+    questData.clicks++;
+
+    if (questData.clicks >= questData.maxClicks) {
+        // Quest completed!
+        activeQuests.delete(key);
+        await completeQuest(interaction, quest, user);
+    } else {
+        // Update progress
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle(`⚔️ ${quest.quest_name}`)
+            .setDescription(`${quest.description}\n\n**Keep attacking!**\nTime remaining: ${Math.ceil(questData.timeLimit - elapsed)}s`)
+            .addFields({
+                name: 'Progress',
+                value: `${questData.clicks}/${questData.maxClicks} attacks 💥`
+            });
+
+        const button = new ButtonBuilder()
+            .setCustomId(`combat_attack_${quest.id}`)
+            .setLabel('⚔️ Attack!')
+            .setStyle(ButtonStyle.Danger);
+
+        const row = new ActionRowBuilder().addComponents(button);
+
+        await interaction.update({ embeds: [embed], components: [row] });
+    }
+}
+
+// ===== GATHERING QUEST: Timer-based =====
+async function startGatheringQuest(interaction, quest, user) {
+    const waitTime = QuestScaling.getGatheringTime(user.level, quest.difficulty);
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTitle(`🌿 ${quest.quest_name}`)
+        .setDescription(`${quest.description}\n\n**Gathering in progress...**\nWait for ${waitTime} seconds while you collect resources.`)
+        .addFields({
+            name: 'Status',
+            value: `⏳ Gathering... (${waitTime}s remaining)`
+        });
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+
+    // Set timeout to complete quest
+    setTimeout(async () => {
+        try {
+            await completeQuest(interaction, quest, user, true);
+        } catch (error) {
+            console.error('Error completing gathering quest:', error);
+        }
+    }, waitTime * 1000);
+}
+
+// ===== EXPLORATION QUEST: Multi-step journey =====
+async function startExplorationQuest(interaction, quest, user) {
+    const locations = ['Start', 'Forest', 'Mountains', 'Cave', 'Destination'];
+    const currentStep = 0;
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTitle(`🗺️ ${quest.quest_name}`)
+        .setDescription(`${quest.description}\n\n**Your Journey:**\nClick 'Continue' to progress through your expedition.`)
+        .addFields({
+            name: 'Current Location',
+            value: `📍 ${locations[currentStep]}`,
+            inline: true
+        }, {
+            name: 'Progress',
+            value: `${currentStep + 1}/${locations.length}`,
+            inline: true
+        });
+
+    const button = new ButtonBuilder()
+        .setCustomId(`explore_continue_${quest.id}_${currentStep}`)
+        .setLabel('➡️ Continue Journey')
+        .setStyle(ButtonStyle.Primary);
+
+    const row = new ActionRowBuilder().addComponents(button);
+
+    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+}
+
+async function handleExplorationContinue(interaction) {
+    if (!interaction.customId.startsWith('explore_continue_')) return;
+
+    const parts = interaction.customId.split('_');
+    const questId = parseInt(parts[2]);
+    const currentStep = parseInt(parts[3]);
+    const quest = QuestModel.findById(questId);
+    const user = UserModel.findByDiscordId(interaction.user.id);
+
+    const locations = ['Start', 'Forest', 'Mountains', 'Cave', 'Destination'];
+    const nextStep = currentStep + 1;
+
+    if (nextStep >= locations.length) {
+        // Quest completed!
+        await completeQuest(interaction, quest, user);
+    } else {
+        // Update progress
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle(`🗺️ ${quest.quest_name}`)
+            .setDescription(`${quest.description}\n\n**Your Journey:**\nYou've reached ${locations[nextStep]}!`)
+            .addFields({
+                name: 'Current Location',
+                value: `📍 ${locations[nextStep]}`,
+                inline: true
+            }, {
+                name: 'Progress',
+                value: `${nextStep + 1}/${locations.length}`,
+                inline: true
+            });
+
+        const button = new ButtonBuilder()
+            .setCustomId(`explore_continue_${quest.id}_${nextStep}`)
+            .setLabel('➡️ Continue Journey')
+            .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(button);
+
+        await interaction.update({ embeds: [embed], components: [row] });
+    }
+}
+
+// ===== DELIVERY QUEST: Timer-based =====
+async function startDeliveryQuest(interaction, quest, user) {
+    const deliveryTime = QuestScaling.getDeliveryTime(user.level, quest.difficulty);
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTitle(`📦 ${quest.quest_name}`)
+        .setDescription(`${quest.description}\n\n**Delivery in progress...**\nTraveling to destination... ETA: ${deliveryTime} seconds`)
+        .addFields({
+            name: 'Status',
+            value: `🚚 Traveling... (${deliveryTime}s remaining)`
+        });
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+
+    // Set timeout to complete quest
+    setTimeout(async () => {
+        try {
+            await completeQuest(interaction, quest, user, true);
+        } catch (error) {
+            console.error('Error completing delivery quest:', error);
+        }
+    }, deliveryTime * 1000);
+}
+
+// ===== SOCIAL QUEST: Instant completion =====
+async function startSocialQuest(interaction, quest, user) {
+    // Social quests complete instantly
+    await completeQuest(interaction, quest, user);
+}
+
+// ===== GENERIC QUEST: Fallback =====
+async function startGenericQuest(interaction, quest, user) {
+    await completeQuest(interaction, quest, user);
+}
+
+// ===== QUEST COMPLETION =====
+async function completeQuest(interaction, quest, user, isFollowUp = false) {
+    // Scale rewards based on player level
+    const scaledCurrency = QuestScaling.scaleQuestRewards(quest.reward_currency, user.level, quest.difficulty);
+    const scaledGems = QuestScaling.scaleQuestRewards(quest.reward_gems, user.level, quest.difficulty);
+
+    // Mark quest as completed
+    UserQuestModel.completeQuest(user.id, quest.id);
+    UserModel.updateCurrency(user.discord_id, scaledCurrency);
+    UserModel.updateGems(user.discord_id, scaledGems);
+    UserModel.incrementQuestCount(user.discord_id);
+    ServerModel.incrementQuestCount(interaction.guild.id);
+    GlobalStatsModel.incrementQuestCount();
+
+    // Update leaderboard
+    const now = new Date();
+    LeaderboardModel.updateScore(user.id, scaledCurrency + (scaledGems * 10), now.getMonth() + 1, now.getFullYear());
+
+    // Add experience with level-based scaling
+    const questExp = QuestScaling.getBonusXP(user.level, quest.difficulty);
+    const levelResult = LevelSystem.addExperience(user.level, user.experience, user.total_experience, questExp);
+    UserModel.updateLevel(user.discord_id, levelResult.newLevel, levelResult.newCurrentExp, levelResult.newTotalExp);
+
+    // Track in reporting
+    const reporting = getReportingInstance();
+    if (reporting) {
+        reporting.incrementQuests();
+    }
+
+    const completedCount = UserQuestModel.getCompletedCount(user.id, interaction.guild.id);
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.success)
+        .setTitle('✅ Quest Completed!')
+        .setDescription(`**${quest.quest_name}**\n${quest.description}`)
+        .addFields(
+            {
+                name: '💰 Rewards Earned',
+                value: `+${scaledCurrency} currency\n+${scaledGems} gems\n+${questExp} XP`,
+                inline: true
+            },
+            {
+                name: '📊 Progress',
+                value: `${completedCount}/${config.quest.questsPerServer} quests completed today`,
+                inline: true
+            }
+        );
+
+    if (levelResult.leveledUp) {
+        const rewards = LevelSystem.getLevelRewards(levelResult.newLevel);
+        UserModel.updateCurrency(user.discord_id, rewards.currency);
+        UserModel.updateGems(user.discord_id, rewards.gems);
+
+        embed.addFields({
+            name: `🎉 Level Up! ${user.level} → ${levelResult.newLevel}`,
+            value: `You reached level ${levelResult.newLevel}!\n+${rewards.currency} currency\n+${rewards.gems} gems`
+        });
+    } else {
+        const progressBar = LevelSystem.getProgressBar(levelResult.newCurrentExp, levelResult.requiredExp);
+        embed.addFields({
+            name: `📈 Level ${levelResult.newLevel}`,
+            value: `${progressBar} ${levelResult.newCurrentExp}/${levelResult.requiredExp} XP`
+        });
+    }
+
+    embed.setFooter({ text: 'Use /quests to accept more quests!' })
+        .setTimestamp();
+
+    if (isFollowUp) {
+        // For timer-based quests, send a follow-up message
+        try {
+            await interaction.followUp({ embeds: [embed], ephemeral: true });
+        } catch (error) {
+            console.error('Error sending quest completion follow-up:', error);
+        }
+    } else {
+        // For interactive quests, update the original message
+        await interaction.update({ embeds: [embed], components: [] });
+    }
+}
+
+module.exports = {
+    handleQuestAccept,
+    handleCombatAttack,
+    handleExplorationContinue
+};
