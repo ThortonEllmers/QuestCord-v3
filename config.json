@@ -1,6 +1,6 @@
 {
   "port": 3000,
-  "productionPort": 80,
+  "productionPort": 3000,
   "supportServer": {
     "id": "1404523107544469545",
     "roles": {
