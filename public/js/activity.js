@@ -1,0 +1,178 @@
+let ws = null;
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log('WebSocket connected');
+        loadInitialActivity();
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+
+            switch(message.type) {
+                case 'activity':
+                    addActivityItem(message.data);
+                    break;
+                case 'stats':
+                    updateStats(message.data);
+                    break;
+                case 'leaderboard':
+                    updateLeaderboard(message.data);
+                    break;
+                case 'staff':
+                    updateStaff(message.data);
+                    break;
+                default:
+                    addActivityItem(message);
+            }
+        } catch (error) {
+            console.error('Error parsing message:', error);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket disconnected. Reconnecting in 5 seconds...');
+        setTimeout(connectWebSocket, 5000);
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+}
+
+async function loadInitialActivity() {
+    try {
+        const response = await fetch('/api/activity?limit=5');
+        const activities = await response.json();
+
+        const feedElement = document.getElementById('activity-feed');
+        feedElement.innerHTML = '';
+
+        if (activities.length === 0) {
+            feedElement.innerHTML = '<div class="activity-item">No recent activity</div>';
+            return;
+        }
+
+        activities.reverse().forEach(activity => {
+            addActivityItem(activity, false);
+        });
+    } catch (error) {
+        console.error('Error loading activity:', error);
+    }
+}
+
+function addActivityItem(activity, prepend = true) {
+    const feedElement = document.getElementById('activity-feed');
+    const activityElement = document.createElement('div');
+    activityElement.className = 'activity-item';
+    activityElement.dataset.timestamp = activity.timestamp;
+
+    const timeAgo = getTimeAgo(activity.timestamp);
+
+    activityElement.innerHTML = `
+        <div class="activity-username">${escapeHtml(activity.username)}</div>
+        <div class="activity-action">${escapeHtml(activity.action)}</div>
+        <div class="activity-time">${timeAgo}</div>
+    `;
+
+    if (prepend) {
+        feedElement.insertBefore(activityElement, feedElement.firstChild);
+
+        const items = feedElement.children;
+        if (items.length > 5) {
+            feedElement.removeChild(items[items.length - 1]);
+        }
+    } else {
+        feedElement.appendChild(activityElement);
+    }
+}
+
+function getTimeAgo(timestamp) {
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - timestamp;
+
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function updateStats(stats) {
+    const serverStat = document.querySelector('.stat-card:nth-child(1) .stat-value');
+    const userStat = document.querySelector('.stat-card:nth-child(2) .stat-value');
+    const questStat = document.querySelector('.stat-card:nth-child(3) .stat-value');
+
+    if (serverStat) serverStat.textContent = stats.totalServers.toLocaleString();
+    if (userStat) userStat.textContent = stats.totalUsers.toLocaleString();
+    if (questStat) questStat.textContent = stats.totalQuestsCompleted.toLocaleString();
+}
+
+function updateLeaderboard(players) {
+    const container = document.querySelector('.leaderboard-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (players.length === 0) {
+        container.innerHTML = '<p class="empty-state">No rankings yet. Be the first to compete!</p>';
+        return;
+    }
+
+    players.forEach((player, index) => {
+        const item = document.createElement('div');
+        item.className = `leaderboard-item rank-${index + 1}`;
+
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1;
+
+        item.innerHTML = `
+            <div class="rank-badge">${medal}</div>
+            <div class="player-name">${escapeHtml(player.username)}</div>
+            <div class="player-score">${player.score.toLocaleString()} pts</div>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
+function updateStaff(staff) {
+    const container = document.querySelector('.staff-grid');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    staff.forEach(member => {
+        const card = document.createElement('div');
+        card.className = 'staff-card';
+
+        card.innerHTML = `
+            <div class="staff-name">${escapeHtml(member.username)}</div>
+            <div class="staff-role ${member.role.toLowerCase()}">${escapeHtml(member.role)}</div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+connectWebSocket();
+
+setInterval(() => {
+    const items = document.querySelectorAll('.activity-time');
+    items.forEach(item => {
+        const activityElement = item.closest('.activity-item');
+        if (activityElement.dataset.timestamp) {
+            item.textContent = getTimeAgo(parseInt(activityElement.dataset.timestamp));
+        }
+    });
+}, 60000);

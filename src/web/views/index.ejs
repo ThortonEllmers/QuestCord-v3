@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuestCord - Quest Across Discord</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="hero">
+        <div class="container">
+            <h1 class="hero-title">QuestCord</h1>
+            <p class="hero-subtitle">Quest across the Discord universe</p>
+            <p class="hero-description">Complete quests, defeat bosses, and climb the global leaderboard in this immersive Discord RPG experience</p>
+            <div class="hero-buttons">
+                <a href="https://discord.com/oauth2/authorize?client_id=<%= process.env.DISCORD_CLIENT_ID %>&permissions=2048&scope=bot%20applications.commands" class="btn btn-primary" target="_blank">Add to Discord</a>
+                <a href="#about" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value"><%= stats.total_servers.toLocaleString() %></div>
+                    <div class="stat-label">Servers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value"><%= stats.total_users.toLocaleString() %></div>
+                    <div class="stat-label">Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value"><%= stats.total_quests_completed.toLocaleString() %></div>
+                    <div class="stat-label">Quests Completed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="about" class="about-section">
+        <div class="container">
+            <h2 class="section-title">What is QuestCord?</h2>
+            <p class="section-description">QuestCord transforms Discord servers into a virtual world where you can complete quests, battle bosses, and earn rewards. Each server becomes a unique location with daily rotating quests.</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Daily Quests</h3>
+                    <p>Complete 5 unique quests per server each day. Travel between servers to continue your adventure.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Boss Battles</h3>
+                    <p>Bosses randomly spawn across servers. Team up with other players to defeat them and earn massive rewards.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Global Leaderboard</h3>
+                    <p>Compete with players worldwide. Top 3 players each month receive exclusive rewards.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Economy System</h3>
+                    <p>Earn currency and gems from quests and bosses. Use them to purchase rare items and upgrades.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="activity-section">
+        <div class="container">
+            <h2 class="section-title">Live Activity</h2>
+            <div class="activity-container" id="activity-feed">
+                <div class="activity-item">Loading activity...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="leaderboard-section">
+        <div class="container">
+            <h2 class="section-title">Global Leaderboard</h2>
+            <div class="leaderboard-container">
+                <% if (topPlayers.length === 0) { %>
+                    <p class="empty-state">No rankings yet. Be the first to compete!</p>
+                <% } else { %>
+                    <% topPlayers.forEach((player, index) => { %>
+                        <div class="leaderboard-item rank-<%= index + 1 %>">
+                            <div class="rank-badge">
+                                <% if (index === 0) { %>🥇
+                                <% } else if (index === 1) { %>🥈
+                                <% } else if (index === 2) { %>🥉
+                                <% } else { %><%= index + 1 %>
+                                <% } %>
+                            </div>
+                            <div class="player-name"><%= player.username %></div>
+                            <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
+                        </div>
+                    <% }); %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq-section">
+        <div class="container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>How do I get started?</h3>
+                    <p>Add QuestCord to your Discord server, then use /tutorial to learn the basics. Start with /quests to see available quests.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>When do quests reset?</h3>
+                    <p>Quests rotate daily at midnight NZ time. Each server gets 5 unique quests per day.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How do boss spawns work?</h3>
+                    <p>Bosses spawn randomly in opted-in servers. Only one boss can be active at a time, and it stays for 60 minutes or until defeated.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>What are the leaderboard rewards?</h3>
+                    <p>Top 3 players each month receive currency and gems. The leaderboard resets on the 1st of each month.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Can I opt out of the quest system?</h3>
+                    <p>Yes, server owners can use /optout to disable quests in their server. You can re-enable it anytime with /optin.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How do I earn currency and gems?</h3>
+                    <p>Complete quests and defeat bosses to earn rewards. Higher difficulty quests and bosses give better rewards.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <% if (staff.length > 0) { %>
+    <div class="staff-section">
+        <div class="container">
+            <h2 class="section-title">Team</h2>
+            <div class="staff-grid">
+                <% staff.forEach(member => { %>
+                    <div class="staff-card">
+                        <div class="staff-name"><%= member.username %></div>
+                        <div class="staff-role <%= member.role.toLowerCase() %>"><%= member.role %></div>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <%- include('partials/footer') %>
+
+    <script src="/js/activity.js"></script>
+</body>
+</html>
