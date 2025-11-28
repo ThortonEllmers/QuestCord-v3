@@ -1,5 +1,6 @@
 const { UserModel, ActivityLogModel } = require('../../database/models');
 const { broadcastActivity } = require('../../web/server');
+const { getReportingInstance } = require('../../utils/reportingSystem');
 
 module.exports = {
     name: 'interactionCreate',
@@ -37,9 +38,21 @@ module.exports = {
                 timestamp: timestamp
             });
 
+            // Track command execution
+            const reporting = getReportingInstance();
+            if (reporting) {
+                reporting.incrementCommands();
+            }
+
             await command.execute(interaction);
         } catch (error) {
             console.error(`Error executing command ${interaction.commandName}:`, error);
+
+            // Report error to Discord channel
+            const reporting = getReportingInstance();
+            if (reporting) {
+                reporting.sendErrorReport(error, `Command: /${interaction.commandName} by ${interaction.user.tag}`);
+            }
 
             const errorMessage = {
                 content: 'An error occurred while executing this command.',

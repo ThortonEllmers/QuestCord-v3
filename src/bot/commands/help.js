@@ -38,7 +38,7 @@ module.exports = {
                 },
                 {
                     name: 'Staff Commands',
-                    value: '`/admin` - Staff-only data management commands'
+                    value: '`/admin` - Staff-only data management commands\n`/restart` - Restart the bot (Staff/Developer)'
                 }
             )
             .setFooter({ text: 'QuestCord - Quest across the Discord universe' })

@@ -2,25 +2,57 @@ const { ActivityType } = require('discord.js');
 const { ServerModel, GlobalStatsModel } = require('../../database/models');
 const { broadcastStats } = require('../../web/server');
 
+// List of commands to cycle through in rich presence
+const commands = [
+    '/quests - View available quests',
+    '/complete - Complete a quest',
+    '/travel - Explore new servers',
+    '/attack - Fight the boss',
+    '/profile - View your stats',
+    '/balance - Check your currency',
+    '/leaderboard - See rankings',
+    '/help - Get help',
+    '/tutorial - Learn to play',
+    '/boss - View boss status',
+    '/rank - Check your rank'
+];
+
+let currentCommandIndex = 0;
+
 module.exports = {
     name: 'ready',
     once: true,
     async execute(client) {
         console.log(`Logged in as ${client.user.tag}`);
 
-        client.user.setPresence({
-            activities: [{
-                name: 'Quests across servers',
-                type: ActivityType.Playing
-            }],
-            status: 'online'
-        });
+        // Set initial presence
+        updatePresence(client);
+
+        // Cycle through commands every 2 minutes (120000ms)
+        setInterval(() => updatePresence(client), 2 * 60 * 1000);
 
         await updateGuildStats(client);
 
         setInterval(() => updateGuildStats(client), 60000);
     }
 };
+
+function updatePresence(client) {
+    const command = commands[currentCommandIndex];
+
+    client.user.setPresence({
+        activities: [{
+            name: command,
+            type: ActivityType.Playing
+        }],
+        status: 'online'
+    });
+
+    console.log(`[Presence] Updated to: ${command}`);
+
+    // Move to next command
+    currentCommandIndex = (currentCommandIndex + 1) % commands.length;
+}
 
 async function updateGuildStats(client) {
     try {
