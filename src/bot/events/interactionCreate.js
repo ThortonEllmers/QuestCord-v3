@@ -22,20 +22,105 @@ module.exports = {
                 if (interaction.customId === 'help_tutorial') {
                     const tutorialCommand = interaction.client.commands.get('tutorial');
                     if (tutorialCommand) {
-                        return await tutorialCommand.execute(interaction);
+                        await interaction.deferReply({ ephemeral: true });
+                        // Execute the command and capture its response
+                        try {
+                            // Temporarily override reply to use followUp
+                            const originalReply = interaction.reply;
+                            interaction.reply = async (options) => {
+                                return await interaction.editReply(options);
+                            };
+                            await tutorialCommand.execute(interaction);
+                            interaction.reply = originalReply;
+                        } catch (err) {
+                            await interaction.editReply({ content: 'Failed to load tutorial.', ephemeral: true });
+                        }
                     }
+                    return;
                 }
                 if (interaction.customId === 'help_quests') {
                     const questsCommand = interaction.client.commands.get('quests');
                     if (questsCommand) {
-                        return await questsCommand.execute(interaction);
+                        await interaction.deferReply({ ephemeral: true });
+                        try {
+                            const originalReply = interaction.reply;
+                            interaction.reply = async (options) => {
+                                return await interaction.editReply(options);
+                            };
+                            await questsCommand.execute(interaction);
+                            interaction.reply = originalReply;
+                        } catch (err) {
+                            await interaction.editReply({ content: 'Failed to load quests.', ephemeral: true });
+                        }
                     }
+                    return;
                 }
                 if (interaction.customId === 'help_profile') {
-                    const profileCommand = interaction.client.commands.get('profile');
-                    if (profileCommand) {
-                        return await profileCommand.execute(interaction);
+                    const { LevelSystem } = require('../utils/levelSystem');
+                    const config = require('../../../config.json');
+                    const { EmbedBuilder } = require('discord.js');
+
+                    await interaction.deferReply({ ephemeral: true });
+                    try {
+                        const targetUser = interaction.user;
+                        let user = UserModel.findByDiscordId(targetUser.id);
+
+                        if (!user) {
+                            UserModel.create(targetUser.id, targetUser.globalName || targetUser.username);
+                            user = UserModel.findByDiscordId(targetUser.id);
+                        }
+
+                        const now = new Date();
+                        const { LeaderboardModel } = require('../../database/models');
+                        const rank = LeaderboardModel.getUserRank(user.id, now.getMonth() + 1, now.getFullYear());
+                        const levelTitle = LevelSystem.getLevelTitle(user.level);
+                        const progressBar = LevelSystem.getProgressBar(user.experience, LevelSystem.getRequiredExperience(user.level));
+
+                        const embed = new EmbedBuilder()
+                            .setColor(config.theme.colors.primary)
+                            .setTitle(`${targetUser.username}'s Profile`)
+                            .setDescription(`**${levelTitle}**`)
+                            .setThumbnail(targetUser.displayAvatarURL())
+                            .addFields(
+                                {
+                                    name: 'Level',
+                                    value: `${user.level}\n${progressBar} ${user.experience}/${LevelSystem.getRequiredExperience(user.level)} XP`,
+                                    inline: false
+                                },
+                                {
+                                    name: 'Currency',
+                                    value: user.currency.toLocaleString(),
+                                    inline: true
+                                },
+                                {
+                                    name: 'Gems',
+                                    value: user.gems.toLocaleString(),
+                                    inline: true
+                                },
+                                {
+                                    name: 'Quests Completed',
+                                    value: user.quests_completed.toString(),
+                                    inline: true
+                                },
+                                {
+                                    name: 'Bosses Defeated',
+                                    value: user.bosses_defeated.toString(),
+                                    inline: true
+                                },
+                                {
+                                    name: 'Monthly Rank',
+                                    value: rank ? `#${rank}` : 'Unranked',
+                                    inline: true
+                                }
+                            )
+                            .setFooter({ text: `User ID: ${targetUser.id}` });
+
+                        await interaction.editReply({ embeds: [embed] });
+                    } catch (err) {
+                        console.error('Error loading profile:', err);
+                        await interaction.editReply({ content: 'Failed to load profile.', ephemeral: true });
                     }
+                    return;
                 }
             } catch (error) {
                 console.error('Error handling button interaction:', error);
@@ -66,23 +151,32 @@ module.exports = {
         try {
             let user = UserModel.findByDiscordId(interaction.user.id);
             if (!user) {
-                UserModel.create(interaction.user.id, interaction.user.username);
+                // Use display name (global name) if available, otherwise username
+                const displayName = interaction.user.globalName || interaction.user.username;
+                UserModel.create(interaction.user.id, displayName);
                 user = UserModel.findByDiscordId(interaction.user.id);
+            } else {
+                // Update username if it changed
+                const displayName = interaction.user.globalName || interaction.user.username;
+                if (user.username !== displayName) {
+                    UserModel.create(interaction.user.id, displayName); // Updates on conflict
+                }
             }
 
             const timestamp = Math.floor(Date.now() / 1000);
             const action = `Used command: /${interaction.commandName}`;
+            const displayName = interaction.user.globalName || interaction.user.username;
 
             ActivityLogModel.log(
                 user.id,
-                interaction.user.username,
+                displayName,
                 action,
                 JSON.stringify({ guild: interaction.guild?.name || 'DM' })
             );
 
             broadcastActivity({
                 user_id: user.id,
-                username: interaction.user.username,
+                username: displayName,
                 action: action,
                 timestamp: timestamp
             });

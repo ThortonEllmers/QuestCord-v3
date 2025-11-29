@@ -69,9 +69,18 @@ module.exports = {
 
             embed.addFields({
                 name: `${typeEmoji} ${quest.quest_name}${status}`,
-                value: `${quest.description}\n${difficultyEmoji} Difficulty: ${quest.difficulty}\n💰 Rewards: ${quest.reward_currency} currency, ${quest.reward_gems} gems`,
+                value: `${quest.description}\n\n${difficultyEmoji} Difficulty: ${quest.difficulty}\n💰 Rewards: ${quest.reward_currency} currency, ${quest.reward_gems} gems`,
                 inline: false
             });
+
+            // Add spacing between quests (except after the last one)
+            if (index < quests.length - 1) {
+                embed.addFields({
+                    name: '\u200b',
+                    value: '\u200b',
+                    inline: false
+                });
+            }
 
             if (!userQuest || !userQuest.completed) {
                 buttons.push(

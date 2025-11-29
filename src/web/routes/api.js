@@ -5,10 +5,15 @@ const { GlobalStatsModel, LeaderboardModel, ActivityLogModel, StaffModel } = req
 router.get('/stats', (req, res) => {
     try {
         const stats = GlobalStatsModel.get();
+        const totalCurrency = GlobalStatsModel.getTotalCurrencyInCirculation();
+        const totalGems = GlobalStatsModel.getTotalGemsInCirculation();
+
         res.json({
             totalServers: stats.total_servers,
             totalUsers: stats.total_users,
-            totalQuestsCompleted: stats.total_quests_completed
+            totalQuestsCompleted: stats.total_quests_completed,
+            totalCurrency: totalCurrency,
+            totalGems: totalGems
         });
     } catch (error) {
         console.error('Error fetching stats:', error);

@@ -1,54 +1,97 @@
 let ws = null;
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectInterval = 5000;
+let isConnecting = false;
 
 function connectWebSocket() {
+    // Prevent multiple simultaneous connection attempts
+    if (isConnecting) {
+        return;
+    }
+
+    // Stop reconnecting after max attempts
+    if (reconnectAttempts >= maxReconnectAttempts) {
+        console.log('Max reconnection attempts reached. Stopped reconnecting.');
+        return;
+    }
+
+    isConnecting = true;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
 
-    ws = new WebSocket(wsUrl);
+    try {
+        ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => {
-        console.log('WebSocket connected');
-        loadInitialActivity();
-    };
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            reconnectAttempts = 0; // Reset on successful connection
+            isConnecting = false;
+            loadInitialActivity();
+        };
 
-    ws.onmessage = (event) => {
-        try {
-            const message = JSON.parse(event.data);
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
 
-            switch(message.type) {
-                case 'activity':
-                    addActivityItem(message.data);
-                    break;
-                case 'stats':
-                    updateStats(message.data);
-                    break;
-                case 'leaderboard':
-                    updateLeaderboard(message.data);
-                    break;
-                case 'staff':
-                    updateStaff(message.data);
-                    break;
-                default:
-                    addActivityItem(message);
+                switch(message.type) {
+                    case 'activity':
+                        addActivityItem(message.data);
+                        break;
+                    case 'stats':
+                        updateStats(message.data);
+                        break;
+                    case 'leaderboard':
+                        updateLeaderboard(message.data);
+                        break;
+                    case 'staff':
+                        updateStaff(message.data);
+                        break;
+                    default:
+                        addActivityItem(message);
+                }
+            } catch (error) {
+                console.error('Error parsing message:', error);
             }
-        } catch (error) {
-            console.error('Error parsing message:', error);
-        }
-    };
+        };
 
-    ws.onclose = () => {
-        console.log('WebSocket disconnected. Reconnecting in 5 seconds...');
-        setTimeout(connectWebSocket, 5000);
-    };
+        ws.onclose = (event) => {
+            isConnecting = false;
 
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
+            // Don't reconnect if close was intentional (code 1000)
+            if (event.code === 1000) {
+                console.log('WebSocket closed normally');
+                return;
+            }
+
+            reconnectAttempts++;
+            console.log(`WebSocket disconnected. Reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts} in ${reconnectInterval/1000}s...`);
+
+            setTimeout(() => {
+                connectWebSocket();
+            }, reconnectInterval);
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            isConnecting = false;
+        };
+    } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+        isConnecting = false;
+    }
 }
+
+// Clean up WebSocket on page unload
+window.addEventListener('beforeunload', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, 'Page unload');
+    }
+});
 
 async function loadInitialActivity() {
     try {
-        const response = await fetch('/api/activity?limit=5');
+        const response = await fetch('/api/activity?limit=3');
         const activities = await response.json();
 
         const feedElement = document.getElementById('activity-feed');
@@ -85,7 +128,7 @@ function addActivityItem(activity, prepend = true) {
         feedElement.insertBefore(activityElement, feedElement.firstChild);
 
         const items = feedElement.children;
-        if (items.length > 5) {
+        if (items.length > 3) {
             feedElement.removeChild(items[items.length - 1]);
         }
     } else {

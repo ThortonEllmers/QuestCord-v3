@@ -10,7 +10,8 @@
   },
   "quest": {
     "questsPerServer": 5,
-    "rotationTime": "0 0 * * *"
+    "rotationTime": "0 0 * * *",
+    "cooldownTime": 3600000
   },
   "boss": {
     "maxConcurrent": 1,
@@ -33,6 +34,11 @@
   },
   "activity": {
     "maxDisplayItems": 50
+  },
+  "travel": {
+    "minTravelTime": 300000,
+    "maxTravelTime": 1800000,
+    "cooldown": 60000
   },
   "theme": {
     "colors": {

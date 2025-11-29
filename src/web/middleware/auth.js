@@ -16,14 +16,32 @@ async function updateStaffRoles(client, broadcastCallback) {
 
         if (developerRole) {
             for (const [memberId, member] of developerRole.members) {
-                StaffModel.add(memberId, member.displayName, 'Developer');
+                const avatarUrl = member.user.displayAvatarURL({ size: 128, extension: 'png' });
+                const displayName = member.user.globalName || member.user.username;
+                StaffModel.add(memberId, member.displayName, 'Developer', avatarUrl);
+
+                // Also update the user record to ensure display name is current
+                const { UserModel } = require('../../database/models');
+                const user = UserModel.findByDiscordId(memberId);
+                if (user) {
+                    UserModel.create(memberId, displayName); // Updates on conflict
+                }
             }
         }
 
         if (staffRole) {
             for (const [memberId, member] of staffRole.members) {
                 if (!developerRole || !member.roles.cache.has(config.supportServer.roles.developer)) {
-                    StaffModel.add(memberId, member.displayName, 'Staff');
+                    const avatarUrl = member.user.displayAvatarURL({ size: 128, extension: 'png' });
+                    const displayName = member.user.globalName || member.user.username;
+                    StaffModel.add(memberId, member.displayName, 'Staff', avatarUrl);
+
+                    // Also update the user record to ensure display name is current
+                    const { UserModel } = require('../../database/models');
+                    const user = UserModel.findByDiscordId(memberId);
+                    if (user) {
+                        UserModel.create(memberId, displayName); // Updates on conflict
+                    }
                 }
             }
         }

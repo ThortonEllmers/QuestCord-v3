@@ -51,6 +51,21 @@ class UserModel {
         const stmt = db.prepare('UPDATE users SET experience = experience + ?, total_experience = total_experience + ?, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(exp, exp, discordId);
     }
+
+    static startTravel(discordId, destination, arrivalTime) {
+        const stmt = db.prepare('UPDATE users SET traveling = 1, travel_destination = ?, travel_arrival_time = ?, last_travel_time = strftime(\'%s\', \'now\'), updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        return stmt.run(destination, arrivalTime, discordId);
+    }
+
+    static completeTravel(discordId) {
+        const stmt = db.prepare('UPDATE users SET traveling = 0, travel_destination = NULL, travel_arrival_time = NULL, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        return stmt.run(discordId);
+    }
+
+    static updateLastQuestTime(discordId) {
+        const stmt = db.prepare('UPDATE users SET last_quest_time = strftime(\'%s\', \'now\'), updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        return stmt.run(discordId);
+    }
 }
 
 class ServerModel {
@@ -324,15 +339,16 @@ class ActivityLogModel {
 }
 
 class StaffModel {
-    static add(discordId, username, role) {
+    static add(discordId, username, role, avatarUrl = null) {
         const stmt = db.prepare(`
-            INSERT INTO staff (discord_id, username, role)
-            VALUES (?, ?, ?)
+            INSERT INTO staff (discord_id, username, role, avatar_url)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(discord_id) DO UPDATE SET
                 username = excluded.username,
-                role = excluded.role
+                role = excluded.role,
+                avatar_url = excluded.avatar_url
         `);
-        return stmt.run(discordId, username, role);
+        return stmt.run(discordId, username, role, avatarUrl);
     }
 
     static remove(discordId) {
@@ -375,6 +391,16 @@ class GlobalStatsModel {
     static updateLastBossSpawn(timestamp) {
         const stmt = db.prepare('UPDATE global_stats SET last_boss_spawn = ?, updated_at = strftime(\'%s\', \'now\') WHERE id = 1');
         return stmt.run(timestamp);
+    }
+
+    static getTotalCurrencyInCirculation() {
+        const stmt = db.prepare('SELECT COALESCE(SUM(currency), 0) as total FROM users');
+        return stmt.get().total;
+    }
+
+    static getTotalGemsInCirculation() {
+        const stmt = db.prepare('SELECT COALESCE(SUM(gems), 0) as total FROM users');
+        return stmt.get().total;
     }
 }
 

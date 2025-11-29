@@ -13,40 +13,62 @@ module.exports = {
             .setDescription('**Welcome to QuestCord!**\nYour adventure across Discord servers starts here.\n\n**🎮 Quick Start Guide:**\n1. Use `/quests` to see and accept quests\n2. Click the button to start your quest\n3. Complete the interactive task (combat, gathering, etc.)\n4. Use `/travel` to find more servers to quest in\n5. Use `/attack` when a boss spawns\n\n**Complete quests, defeat bosses, and climb the leaderboard!**')
             .addFields(
                 {
+                    name: '\u200b',
+                    value: '\u200b',
+                    inline: false
+                },
+                {
                     name: '🎯 Getting Started',
-                    value: '`/tutorial` - Complete interactive tutorial\n`/profile` - View your stats and progress\n`/help` - View this help menu',
+                    value: '`/tutorial` - Complete interactive tutorial\n\n`/profile` - View your stats and progress\n\n`/help` - View this help menu',
                     inline: true
                 },
                 {
                     name: '⚔️ Questing',
-                    value: '`/quests` - View and accept quests\n`/travel` - Find other servers\n`/rank` - Check your rank',
+                    value: '`/quests` - View and accept quests\n\n`/travel` - Find other servers\n\n`/rank` - Check your rank',
                     inline: true
                 },
                 {
+                    name: '\u200b',
+                    value: '\u200b',
+                    inline: false
+                },
+                {
                     name: '🐉 Combat',
-                    value: '`/attack` - Attack active boss\n`/boss` - View boss status',
+                    value: '`/attack` - Attack active boss\n\n`/boss` - View boss status',
                     inline: true
                 },
                 {
                     name: '💰 Economy',
-                    value: '`/balance` - Check currency/gems\n`/shop` - Browse item shop\n`/inventory` - View your items',
+                    value: '`/balance` - Check currency/gems\n\n`/shop` - Browse item shop\n\n`/inventory` - View your items',
                     inline: true
                 },
                 {
+                    name: '\u200b',
+                    value: '\u200b',
+                    inline: false
+                },
+                {
                     name: '🏆 Competition',
-                    value: '`/leaderboard` - Global rankings\n`/rank` - Your position',
+                    value: '`/leaderboard` - Global rankings\n\n`/rank` - Your position',
                     inline: true
                 },
                 {
                     name: '⚙️ Server Settings',
-                    value: '`/optin` - Enable quests (Owner)\n`/optout` - Disable quests (Owner)',
+                    value: '`/optin` - Enable quests (Owner)\n\n`/optout` - Disable quests (Owner)',
                     inline: true
                 }
             )
-            .addFields({
-                name: '📖 Quest Types',
-                value: '🗡️ **Combat** - Button mashing battle\n🌿 **Gathering** - Timed collection\n🗺️ **Exploration** - Multi-step journey\n📦 **Delivery** - Timed travel\n💬 **Social** - Instant completion'
-            })
+            .addFields(
+                {
+                    name: '\u200b',
+                    value: '\u200b',
+                    inline: false
+                },
+                {
+                    name: '📖 Quest Types',
+                    value: '🗡️ **Combat** - Button mashing battle\n\n🌿 **Gathering** - Timed collection\n\n🗺️ **Exploration** - Multi-step journey\n\n📦 **Delivery** - Timed travel\n\n💬 **Social** - Instant completion'
+                }
+            )
             .setFooter({ text: 'Use the buttons below for more information!' })
             .setTimestamp();
 

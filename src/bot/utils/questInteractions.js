@@ -27,6 +27,20 @@ async function handleQuestAccept(interaction) {
         user = UserModel.findByDiscordId(interaction.user.id);
     }
 
+    // Check quest cooldown
+    const now = Math.floor(Date.now() / 1000);
+    const timeSinceLastQuest = now - (user.last_quest_time || 0);
+    const cooldownRemaining = (config.quest.cooldownTime / 1000) - timeSinceLastQuest;
+
+    if (cooldownRemaining > 0) {
+        const minutes = Math.floor(cooldownRemaining / 60);
+        const seconds = Math.floor(cooldownRemaining % 60);
+        return interaction.reply({
+            content: `⏳ You must wait ${minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`} before accepting another quest.`,
+            ephemeral: true
+        });
+    }
+
     // Check if already completed
     const existingQuest = UserQuestModel.getUserQuests(user.id, interaction.guild.id).find(uq => uq.quest_id === quest.id);
     if (existingQuest && existingQuest.completed) {
@@ -298,6 +312,7 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
     UserModel.updateCurrency(user.discord_id, scaledCurrency);
     UserModel.updateGems(user.discord_id, scaledGems);
     UserModel.incrementQuestCount(user.discord_id);
+    UserModel.updateLastQuestTime(user.discord_id);
     ServerModel.incrementQuestCount(interaction.guild.id);
     GlobalStatsModel.incrementQuestCount();
 

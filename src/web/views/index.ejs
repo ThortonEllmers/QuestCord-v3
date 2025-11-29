@@ -45,6 +45,14 @@
                     <div class="stat-value"><%= stats.total_quests_completed.toLocaleString() %></div>
                     <div class="stat-label">Quests Completed</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-value"><%= stats.total_currency.toLocaleString() %></div>
+                    <div class="stat-label">Currency in Circulation</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value"><%= stats.total_gems.toLocaleString() %></div>
+                    <div class="stat-label">Gems in Circulation</div>
+                </div>
             </div>
         </div>
     </div>
@@ -76,7 +84,7 @@
                     </div>
                 </div>
                 <div class="content-image">
-                    <img src="/images/quest-example.png" alt="Quest Example" onerror="this.src='https://via.placeholder.com/500x600/7c3aed/ffffff?text=Quest+System'">
+                    <img src="/images/compass.png" alt="Quest Example" onerror="this.src='https://via.placeholder.com/500x600/7c3aed/ffffff?text=Quest+System'">
                 </div>
             </div>
         </div>
@@ -86,7 +94,7 @@
         <div class="container">
             <div class="content-with-image reverse">
                 <div class="content-image">
-                    <img src="/images/activity-example.png" alt="Live Activity" onerror="this.src='https://via.placeholder.com/500x600/5865f2/ffffff?text=Live+Activity'">
+                    <img src="/images/notification.png" alt="Live Activity" onerror="this.src='https://via.placeholder.com/500x600/5865f2/ffffff?text=Live+Activity'">
                 </div>
                 <div class="content-text">
                     <h2 class="section-title">Live Activity</h2>
@@ -147,7 +155,7 @@
                     </div>
                 </div>
                 <div class="content-image">
-                    <img src="/images/leaderboard-example.png" alt="Leaderboard" onerror="this.src='https://via.placeholder.com/500x600/fbbf24/000000?text=Leaderboard'">
+                    <img src="/images/leaderboard.png" alt="Leaderboard" onerror="this.src='https://via.placeholder.com/500x600/fbbf24/000000?text=Leaderboard'">
                 </div>
             </div>
         </div>
@@ -192,6 +200,9 @@
             <div class="staff-grid">
                 <% staff.forEach(member => { %>
                     <div class="staff-card">
+                        <% if (member.avatar_url) { %>
+                            <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
+                        <% } %>
                         <div class="staff-name"><%= member.username %></div>
                         <div class="staff-role <%= member.role.toLowerCase() %>"><%= member.role %></div>
                     </div>
@@ -204,25 +215,20 @@
     <%- include('partials/footer') %>
 
     <script>
-        // Scroll to top on page load and remove hash
-        if ('scrollRestoration' in history) {
-            history.scrollRestoration = 'manual';
-        }
-
-        window.addEventListener('load', function() {
-            // Remove hash from URL
-            if (window.location.hash) {
-                history.replaceState(null, null, window.location.pathname);
+        // Scroll to top on page load and remove hash - runs once
+        (function() {
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
             }
 
-            // Scroll to top
-            window.scrollTo(0, 0);
-        });
+            // Remove hash from URL without triggering reload
+            if (window.location.hash) {
+                history.replaceState(null, null, window.location.pathname + window.location.search);
+            }
 
-        // Also scroll to top on page refresh
-        window.addEventListener('beforeunload', function() {
-            window.scrollTo(0, 0);
-        });
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        })();
     </script>
     <script src="/js/activity.js"></script>
 </body>
