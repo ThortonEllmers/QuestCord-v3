@@ -21,7 +21,7 @@ module.exports = {
 
         // Check if user is currently traveling
         if (user.traveling) {
-            const timeLeft = user.travel_arrival_time - now;
+            const timeLeft = user.travel_arrives_at - now;
 
             if (timeLeft > 0) {
                 const minutes = Math.floor(timeLeft / 60);

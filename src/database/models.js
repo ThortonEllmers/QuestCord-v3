@@ -53,12 +53,12 @@ class UserModel {
     }
 
     static startTravel(discordId, destination, arrivalTime) {
-        const stmt = db.prepare('UPDATE users SET traveling = 1, travel_destination = ?, travel_arrival_time = ?, last_travel_time = strftime(\'%s\', \'now\'), updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        const stmt = db.prepare('UPDATE users SET traveling = 1, travel_destination = ?, travel_arrives_at = ?, last_travel_time = strftime(\'%s\', \'now\'), updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(destination, arrivalTime, discordId);
     }
 
     static completeTravel(discordId) {
-        const stmt = db.prepare('UPDATE users SET traveling = 0, travel_destination = NULL, travel_arrival_time = NULL, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        const stmt = db.prepare('UPDATE users SET traveling = 0, travel_destination = NULL, travel_arrives_at = NULL, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(discordId);
     }
 

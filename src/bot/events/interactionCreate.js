@@ -2,6 +2,9 @@ const { UserModel, ActivityLogModel } = require('../../database/models');
 const { broadcastActivity } = require('../../web/server');
 const { getReportingInstance } = require('../../utils/reportingSystem');
 const { handleQuestAccept, handleCombatAttack, handleExplorationContinue, handleReactionClick } = require('../utils/questInteractions');
+const { handleShopPurchase, handleShopCancel } = require('../utils/shopInteractions');
+const { isStaff } = require('../utils/permissions');
+const { db } = require('../../database/schema');
 
 module.exports = {
     name: 'interactionCreate',
@@ -20,6 +23,13 @@ module.exports = {
                 }
                 if (interaction.customId === 'reaction_button') {
                     return await handleReactionClick(interaction);
+                }
+                // Shop purchase buttons
+                if (interaction.customId.startsWith('confirm_buy_')) {
+                    return await handleShopPurchase(interaction);
+                }
+                if (interaction.customId === 'cancel_buy') {
+                    return await handleShopCancel(interaction);
                 }
                 // Help menu buttons
                 if (interaction.customId === 'help_tutorial') {
@@ -149,6 +159,30 @@ module.exports = {
         if (!command) {
             console.error(`Command not found: ${interaction.commandName}`);
             return;
+        }
+
+        // Check if command is globally disabled
+        const disabledCommand = db.prepare('SELECT * FROM disabled_commands WHERE command_name = ?').get(interaction.commandName);
+        if (disabledCommand) {
+            return interaction.reply({
+                content: `❌ The **/${interaction.commandName}** command is currently disabled.`,
+                ephemeral: true
+            });
+        }
+
+        // Check if command has restrictions (whitelist)
+        const restrictions = db.prepare('SELECT * FROM command_whitelist WHERE command_name = ?').all(interaction.commandName);
+        if (restrictions.length > 0) {
+            // Command has restrictions - check if user is whitelisted or is staff
+            const userIsStaff = await isStaff(interaction);
+            const userIsWhitelisted = restrictions.some(r => r.discord_id === interaction.user.id);
+
+            if (!userIsStaff && !userIsWhitelisted) {
+                return interaction.reply({
+                    content: `❌ You don't have permission to use **/${interaction.commandName}**.`,
+                    ephemeral: true
+                });
+            }
         }
 
         try {

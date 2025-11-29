@@ -142,6 +142,71 @@ module.exports = {
                         .setMinValue(1)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('disable-command')
+                .setDescription('Disable a command globally (Developer only)')
+                .addStringOption(option =>
+                    option.setName('command')
+                        .setDescription('The command name to disable')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('enable-command')
+                .setDescription('Enable a disabled command (Developer only)')
+                .addStringOption(option =>
+                    option.setName('command')
+                        .setDescription('The command name to enable')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('restrict-command')
+                .setDescription('Restrict a command to specific users only (Developer only)')
+                .addStringOption(option =>
+                    option.setName('command')
+                        .setDescription('The command name to restrict')
+                        .setRequired(true)
+                )
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to allow access')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('unrestrict-command')
+                .setDescription('Remove restriction from a command (Developer only)')
+                .addStringOption(option =>
+                    option.setName('command')
+                        .setDescription('The command name to unrestrict')
+                        .setRequired(true)
+                )
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to remove from whitelist (leave empty to remove all)')
+                        .setRequired(false)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('list-disabled')
+                .setDescription('List all disabled commands')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('list-restrictions')
+                .setDescription('List all command restrictions')
+                .addStringOption(option =>
+                    option.setName('command')
+                        .setDescription('Show restrictions for specific command')
+                        .setRequired(false)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -190,6 +255,24 @@ module.exports = {
                 break;
             case 'give-item':
                 await handleGiveItem(interaction, targetUser, user);
+                break;
+            case 'disable-command':
+                await handleDisableCommand(interaction);
+                break;
+            case 'enable-command':
+                await handleEnableCommand(interaction);
+                break;
+            case 'restrict-command':
+                await handleRestrictCommand(interaction);
+                break;
+            case 'unrestrict-command':
+                await handleUnrestrictCommand(interaction);
+                break;
+            case 'list-disabled':
+                await handleListDisabled(interaction);
+                break;
+            case 'list-restrictions':
+                await handleListRestrictions(interaction);
                 break;
         }
     }
@@ -708,6 +791,305 @@ async function handleGiveItem(interaction, targetUser, user) {
         console.error('Error giving item:', error);
         await interaction.reply({
             content: 'An error occurred while giving the item.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleDisableCommand(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can disable commands.',
+            ephemeral: true
+        });
+    }
+
+    const commandName = interaction.options.getString('command');
+
+    // Prevent disabling admin command
+    if (commandName === 'admin') {
+        return interaction.reply({
+            content: '❌ Cannot disable the admin command!',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const existing = db.prepare('SELECT * FROM disabled_commands WHERE command_name = ?').get(commandName);
+
+        if (existing) {
+            return interaction.reply({
+                content: `❌ Command **/${commandName}** is already disabled.`,
+                ephemeral: true
+            });
+        }
+
+        db.prepare('INSERT INTO disabled_commands (command_name, disabled_by) VALUES (?, ?)').run(commandName, interaction.user.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🚫 Command Disabled')
+            .setDescription(`Command **/${commandName}** has been globally disabled.`)
+            .addFields({
+                name: 'Disabled By',
+                value: interaction.user.username,
+                inline: true
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Command /${commandName} disabled by ${interaction.user.username}`);
+    } catch (error) {
+        console.error('Error disabling command:', error);
+        await interaction.reply({
+            content: 'An error occurred while disabling the command.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleEnableCommand(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can enable commands.',
+            ephemeral: true
+        });
+    }
+
+    const commandName = interaction.options.getString('command');
+
+    try {
+        const result = db.prepare('DELETE FROM disabled_commands WHERE command_name = ?').run(commandName);
+
+        if (result.changes === 0) {
+            return interaction.reply({
+                content: `❌ Command **/${commandName}** is not disabled.`,
+                ephemeral: true
+            });
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('✅ Command Enabled')
+            .setDescription(`Command **/${commandName}** has been enabled.`)
+            .addFields({
+                name: 'Enabled By',
+                value: interaction.user.username,
+                inline: true
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Command /${commandName} enabled by ${interaction.user.username}`);
+    } catch (error) {
+        console.error('Error enabling command:', error);
+        await interaction.reply({
+            content: 'An error occurred while enabling the command.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleRestrictCommand(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can restrict commands.',
+            ephemeral: true
+        });
+    }
+
+    const commandName = interaction.options.getString('command');
+    const targetUser = interaction.options.getUser('user');
+
+    // Prevent restricting admin command
+    if (commandName === 'admin') {
+        return interaction.reply({
+            content: '❌ Cannot restrict the admin command!',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const existing = db.prepare('SELECT * FROM command_whitelist WHERE command_name = ? AND discord_id = ?')
+            .get(commandName, targetUser.id);
+
+        if (existing) {
+            return interaction.reply({
+                content: `❌ User **${targetUser.username}** already has access to **/${commandName}**.`,
+                ephemeral: true
+            });
+        }
+
+        db.prepare('INSERT INTO command_whitelist (command_name, discord_id, added_by) VALUES (?, ?, ?)')
+            .run(commandName, targetUser.id, interaction.user.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle('🔒 Command Restricted')
+            .setDescription(`User **${targetUser.username}** has been added to the whitelist for **/${commandName}**.\n\n**Note:** Once a command has any whitelist entries, only whitelisted users (and staff) can use it.`)
+            .addFields({
+                name: 'Added By',
+                value: interaction.user.username,
+                inline: true
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] User ${targetUser.username} whitelisted for /${commandName} by ${interaction.user.username}`);
+    } catch (error) {
+        console.error('Error restricting command:', error);
+        await interaction.reply({
+            content: 'An error occurred while restricting the command.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleUnrestrictCommand(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can unrestrict commands.',
+            ephemeral: true
+        });
+    }
+
+    const commandName = interaction.options.getString('command');
+    const targetUser = interaction.options.getUser('user');
+
+    try {
+        let result;
+
+        if (targetUser) {
+            // Remove specific user from whitelist
+            result = db.prepare('DELETE FROM command_whitelist WHERE command_name = ? AND discord_id = ?')
+                .run(commandName, targetUser.id);
+
+            if (result.changes === 0) {
+                return interaction.reply({
+                    content: `❌ User **${targetUser.username}** does not have whitelist access to **/${commandName}**.`,
+                    ephemeral: true
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor(config.theme.colors.success)
+                .setTitle('🔓 User Removed from Whitelist')
+                .setDescription(`User **${targetUser.username}** has been removed from the whitelist for **/${commandName}**.`)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
+            console.log(`[ADMIN] User ${targetUser.username} removed from /${commandName} whitelist by ${interaction.user.username}`);
+        } else {
+            // Remove all restrictions for this command
+            result = db.prepare('DELETE FROM command_whitelist WHERE command_name = ?').run(commandName);
+
+            if (result.changes === 0) {
+                return interaction.reply({
+                    content: `❌ Command **/${commandName}** has no restrictions.`,
+                    ephemeral: true
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setColor(config.theme.colors.success)
+                .setTitle('🔓 Command Unrestricted')
+                .setDescription(`All restrictions have been removed from **/${commandName}**. (${result.changes} users removed)`)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
+            console.log(`[ADMIN] All restrictions removed from /${commandName} by ${interaction.user.username}`);
+        }
+    } catch (error) {
+        console.error('Error unrestricting command:', error);
+        await interaction.reply({
+            content: 'An error occurred while unrestricting the command.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleListDisabled(interaction) {
+    try {
+        const disabledCommands = db.prepare('SELECT * FROM disabled_commands ORDER BY command_name').all();
+
+        if (disabledCommands.length === 0) {
+            return interaction.reply({
+                content: 'No commands are currently disabled.',
+                ephemeral: true
+            });
+        }
+
+        const commandList = disabledCommands.map(cmd => `• **/${cmd.command_name}**`).join('\n');
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🚫 Disabled Commands')
+            .setDescription(commandList)
+            .setFooter({ text: `${disabledCommands.length} command(s) disabled` })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (error) {
+        console.error('Error listing disabled commands:', error);
+        await interaction.reply({
+            content: 'An error occurred while listing disabled commands.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleListRestrictions(interaction) {
+    const commandName = interaction.options.getString('command');
+
+    try {
+        let restrictions;
+        let title;
+
+        if (commandName) {
+            restrictions = db.prepare('SELECT * FROM command_whitelist WHERE command_name = ?').all(commandName);
+            title = `🔒 Restrictions for /${commandName}`;
+        } else {
+            restrictions = db.prepare('SELECT * FROM command_whitelist ORDER BY command_name').all();
+            title = '🔒 All Command Restrictions';
+        }
+
+        if (restrictions.length === 0) {
+            return interaction.reply({
+                content: commandName
+                    ? `Command **/${commandName}** has no restrictions.`
+                    : 'No commands have restrictions.',
+                ephemeral: true
+            });
+        }
+
+        // Group by command if showing all
+        const grouped = {};
+        restrictions.forEach(r => {
+            if (!grouped[r.command_name]) {
+                grouped[r.command_name] = [];
+            }
+            grouped[r.command_name].push(`<@${r.discord_id}>`);
+        });
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle(title)
+            .setFooter({ text: `${restrictions.length} restriction(s) total` })
+            .setTimestamp();
+
+        Object.keys(grouped).sort().forEach(cmd => {
+            embed.addFields({
+                name: `/${cmd}`,
+                value: grouped[cmd].join(', '),
+                inline: false
+            });
+        });
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (error) {
+        console.error('Error listing restrictions:', error);
+        await interaction.reply({
+            content: 'An error occurred while listing restrictions.',
             ephemeral: true
         });
     }

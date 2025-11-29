@@ -29,8 +29,28 @@ async function handleQuestAccept(interaction) {
         user = UserModel.findByDiscordId(interaction.user.id);
     }
 
-    // Check quest cooldown
     const now = Math.floor(Date.now() / 1000);
+
+    // Check if user is traveling
+    if (user.traveling) {
+        const timeLeft = user.travel_arrives_at - now;
+
+        if (timeLeft > 0) {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+
+            return interaction.reply({
+                content: `🚢 You're currently traveling to **${user.travel_destination}**! You can't accept quests while on the road.\n\n⏱️ Arrival in: **${minutes}m ${seconds}s**`,
+                ephemeral: true
+            });
+        } else {
+            // Travel completed, clear the traveling status
+            UserModel.completeTravel(interaction.user.id);
+            user = UserModel.findByDiscordId(interaction.user.id);
+        }
+    }
+
+    // Check quest cooldown
     const timeSinceLastQuest = now - (user.last_quest_time || 0);
     const cooldownRemaining = (config.quest.cooldownTime / 1000) - timeSinceLastQuest;
 

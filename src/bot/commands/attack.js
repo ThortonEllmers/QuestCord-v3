@@ -34,6 +34,26 @@ module.exports = {
             user = UserModel.findByDiscordId(interaction.user.id);
         }
 
+        // Check if user is traveling
+        const now = Math.floor(Date.now() / 1000);
+        if (user.traveling) {
+            const timeLeft = user.travel_arrives_at - now;
+
+            if (timeLeft > 0) {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+
+                return interaction.reply({
+                    content: `🚢 You're currently traveling to **${user.travel_destination}**! You can't fight bosses while on the road.\n\n⏱️ Arrival in: **${minutes}m ${seconds}s**`,
+                    ephemeral: true
+                });
+            } else {
+                // Travel completed, clear the traveling status
+                UserModel.completeTravel(interaction.user.id);
+                user = UserModel.findByDiscordId(interaction.user.id);
+            }
+        }
+
         const baseDamage = 100;
         const randomFactor = Math.random() * 0.5 + 0.75;
         const damage = Math.floor(baseDamage * randomFactor);

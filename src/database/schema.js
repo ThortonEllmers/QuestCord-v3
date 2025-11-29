@@ -33,6 +33,10 @@ function initializeDatabase() {
             max_health INTEGER DEFAULT 100,
             pvp_wins INTEGER DEFAULT 0,
             pvp_losses INTEGER DEFAULT 0,
+            traveling INTEGER DEFAULT 0,
+            travel_destination TEXT,
+            travel_arrives_at INTEGER DEFAULT 0,
+            last_travel_time INTEGER DEFAULT 0,
             created_at INTEGER DEFAULT (strftime('%s', 'now')),
             updated_at INTEGER DEFAULT (strftime('%s', 'now'))
         );
@@ -197,6 +201,25 @@ function initializeDatabase() {
         );
 
         CREATE INDEX IF NOT EXISTS idx_user_items_user_id ON user_items(user_id);
+
+        CREATE TABLE IF NOT EXISTS disabled_commands (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            command_name TEXT UNIQUE NOT NULL,
+            disabled_by TEXT NOT NULL,
+            disabled_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS command_whitelist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            command_name TEXT NOT NULL,
+            discord_id TEXT NOT NULL,
+            added_by TEXT NOT NULL,
+            added_at INTEGER DEFAULT (strftime('%s', 'now')),
+            UNIQUE(command_name, discord_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_command_whitelist_command ON command_whitelist(command_name);
+        CREATE INDEX IF NOT EXISTS idx_command_whitelist_user ON command_whitelist(discord_id);
     `);
 
     // Migrations
@@ -261,7 +284,24 @@ function initializeDatabase() {
         { name: 'pvp_losses', type: 'INTEGER DEFAULT 0' }
     ];
 
+    // Migration: Add travel columns to users table
+    const travelColumns = [
+        { name: 'traveling', type: 'INTEGER DEFAULT 0' },
+        { name: 'travel_destination', type: 'TEXT' },
+        { name: 'travel_arrives_at', type: 'INTEGER DEFAULT 0' },
+        { name: 'last_travel_time', type: 'INTEGER DEFAULT 0' }
+    ];
+
     pvpColumns.forEach(column => {
+        const hasColumn = userTableInfo.some(col => col.name === column.name);
+        if (!hasColumn) {
+            console.log(`Running migration: Adding ${column.name} to users...`);
+            db.exec(`ALTER TABLE users ADD COLUMN ${column.name} ${column.type}`);
+            console.log(`Migration completed: ${column.name} added`);
+        }
+    });
+
+    travelColumns.forEach(column => {
         const hasColumn = userTableInfo.some(col => col.name === column.name);
         if (!hasColumn) {
             console.log(`Running migration: Adding ${column.name} to users...`);
