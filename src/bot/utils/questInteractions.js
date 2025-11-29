@@ -384,7 +384,7 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
 
 // ===== UNIVERSAL CHALLENGE QUEST SYSTEM =====
 async function startChallengeQuest(interaction, quest, user) {
-    const challenge = generateChallenge();
+    const challenge = generateChallenge(quest.difficulty);
     const key = `${user.id}_${quest.id}`;
 
     activeQuests.set(key, {
@@ -413,13 +413,13 @@ async function startChallengeQuest(interaction, quest, user) {
             try {
                 await interaction.editReply({ embeds: [embed], components: [greenRow] });
 
-                // Set timeout for failure (5 seconds to click)
+                // Set timeout for failure
                 setTimeout(async () => {
                     if (activeQuests.has(key)) {
                         activeQuests.delete(key);
                         await failQuest(interaction, quest, user, true);
                     }
-                }, 5000);
+                }, challenge.timeLimit * 1000);
             } catch (error) {
                 console.error('Error updating reaction test:', error);
             }
@@ -431,13 +431,13 @@ async function startChallengeQuest(interaction, quest, user) {
 
         // Wait 5 seconds for memorization
         setTimeout(async () => {
-            embed.setDescription(`Type the emoji sequence you saw!\n\nYou have 30 seconds to respond.`);
+            embed.setDescription(`Type the emoji sequence you saw!\n\nYou have ${challenge.timeLimit} seconds to respond.`);
             try {
                 await interaction.editReply({ embeds: [embed], components: [] });
 
                 // Set up message collector
                 const filter = m => m.author.id === interaction.user.id;
-                const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+                const collector = interaction.channel.createMessageCollector({ filter, time: challenge.timeLimit * 1000, max: 1 });
 
                 collector.on('collect', async (message) => {
                     const questData = activeQuests.get(key);
@@ -474,7 +474,7 @@ async function startChallengeQuest(interaction, quest, user) {
         await interaction.reply({ embeds: [embed], ephemeral: true });
 
         const filter = m => m.author.id === interaction.user.id;
-        const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+        const collector = interaction.channel.createMessageCollector({ filter, time: challenge.timeLimit * 1000, max: 1 });
 
         collector.on('collect', async (message) => {
             const questData = activeQuests.get(key);
@@ -506,20 +506,37 @@ async function startChallengeQuest(interaction, quest, user) {
 
 // Handle reaction button click
 async function handleReactionClick(interaction) {
-    if (!interaction.customId.startsWith('reaction_button')) return;
+    if (interaction.customId !== 'reaction_button') return;
 
-    const key = `${interaction.user.id}_${Object.keys(activeQuests.keys()).find(k => k.startsWith(interaction.user.id))}`;
-    const questData = Array.from(activeQuests.values()).find(q => q.userId === interaction.user.id);
+    // Find the active quest for this user
+    let questKey = null;
+    let questData = null;
 
-    if (!questData) {
+    for (const [key, data] of activeQuests.entries()) {
+        if (key.startsWith(`${data.userId}_`) && data.userId === interaction.user.id) {
+            questKey = key;
+            questData = data;
+            break;
+        }
+    }
+
+    if (!questData || !questKey) {
         return interaction.reply({ content: 'No active reaction challenge found.', ephemeral: true });
     }
 
-    const actualKey = `${questData.userId}_${questData.questId}`;
+    // Verify it's a reaction challenge
+    if (questData.challenge.type !== 'reaction') {
+        return interaction.reply({ content: 'This is not a reaction challenge.', ephemeral: true });
+    }
+
     const quest = QuestModel.findById(questData.questId);
     const user = UserModel.findById(questData.userId);
 
-    activeQuests.delete(actualKey);
+    if (!quest || !user) {
+        return interaction.reply({ content: 'Quest or user not found.', ephemeral: true });
+    }
+
+    activeQuests.delete(questKey);
     await completeQuest(interaction, quest, user, false);
 }
 

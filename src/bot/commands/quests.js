@@ -83,10 +83,15 @@ module.exports = {
             }
 
             if (!userQuest || (!userQuest.completed && !userQuest.failed)) {
+                // Truncate quest name if too long for button (max 80 chars, but keep it shorter)
+                const buttonLabel = quest.quest_name.length > 30
+                    ? quest.quest_name.substring(0, 27) + '...'
+                    : quest.quest_name;
+
                 buttons.push(
                     new ButtonBuilder()
                         .setCustomId(`accept_quest_${quest.id}`)
-                        .setLabel(`Accept Quest ${index + 1}`)
+                        .setLabel(buttonLabel)
                         .setStyle(ButtonStyle.Primary)
                         .setEmoji(typeEmoji)
                 );

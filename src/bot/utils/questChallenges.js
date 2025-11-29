@@ -53,49 +53,70 @@ const TRIVIA = [
 const EMOJIS = ['⚔️', '🛡️', '💎', '🔥', '⚡', '🌟', '💰', '🎯', '🏆', '👑'];
 
 /**
+ * Get time limit based on difficulty
+ * @param {string} difficulty - easy, medium, or hard
+ * @returns {number} Time limit in seconds
+ */
+function getTimeLimit(difficulty) {
+    switch (difficulty) {
+        case 'easy':
+            return 30;
+        case 'medium':
+            return 20;
+        case 'hard':
+            return 10;
+        default:
+            return 30;
+    }
+}
+
+/**
  * Generate a random challenge
+ * @param {string} difficulty - Quest difficulty (easy, medium, hard)
  * @returns {Object} Challenge object with type, data, and answer
  */
-function generateChallenge() {
+function generateChallenge(difficulty = 'medium') {
     const types = ['word_scramble', 'math', 'trivia', 'reaction', 'memory'];
     const type = types[Math.floor(Math.random() * types.length)];
+    const timeLimit = getTimeLimit(difficulty);
 
     switch (type) {
         case 'word_scramble':
-            return generateWordScramble();
+            return generateWordScramble(timeLimit);
         case 'math':
-            return generateMathChallenge();
+            return generateMathChallenge(timeLimit);
         case 'trivia':
-            return generateTrivia();
+            return generateTrivia(timeLimit);
         case 'reaction':
-            return generateReactionTest();
+            return generateReactionTest(timeLimit);
         case 'memory':
-            return generateMemoryGame();
+            return generateMemoryGame(timeLimit);
         default:
-            return generateWordScramble();
+            return generateWordScramble(timeLimit);
     }
 }
 
 /**
  * Word Scramble Challenge
  */
-function generateWordScramble() {
+function generateWordScramble(timeLimit) {
     const word = WORDS[Math.floor(Math.random() * WORDS.length)];
     const scrambled = word.split('').sort(() => Math.random() - 0.5).join('');
 
     return {
         type: 'word_scramble',
         title: '🔤 Word Scramble Challenge',
-        description: `Unscramble this word: **${scrambled.toUpperCase()}**\n\nYou have 30 seconds to respond with your answer!`,
+        description: `Unscramble this word: **${scrambled.toUpperCase()}**\n\nYou have ${timeLimit} seconds to respond with your answer!`,
         answer: word.toLowerCase(),
-        scrambled: scrambled
+        scrambled: scrambled,
+        timeLimit: timeLimit
     };
 }
 
 /**
  * Math Challenge
  */
-function generateMathChallenge() {
+function generateMathChallenge(timeLimit) {
     const operators = ['+', '-', '*'];
     const operator = operators[Math.floor(Math.random() * operators.length)];
 
@@ -118,45 +139,48 @@ function generateMathChallenge() {
     return {
         type: 'math',
         title: '🔢 Math Challenge',
-        description: `Solve this equation: **${num1} ${operator} ${num2} = ?**\n\nYou have 30 seconds to respond with your answer!`,
+        description: `Solve this equation: **${num1} ${operator} ${num2} = ?**\n\nYou have ${timeLimit} seconds to respond with your answer!`,
         answer: answer.toString(),
-        equation: `${num1} ${operator} ${num2}`
+        equation: `${num1} ${operator} ${num2}`,
+        timeLimit: timeLimit
     };
 }
 
 /**
  * Trivia Challenge
  */
-function generateTrivia() {
+function generateTrivia(timeLimit) {
     const trivia = TRIVIA[Math.floor(Math.random() * TRIVIA.length)];
 
     return {
         type: 'trivia',
         title: '❓ Trivia Challenge',
-        description: `${trivia.question}\n\nYou have 30 seconds to respond with your answer!`,
+        description: `${trivia.question}\n\nYou have ${timeLimit} seconds to respond with your answer!`,
         answer: trivia.answer.toLowerCase(),
-        alternatives: trivia.alternatives.map(a => a.toLowerCase())
+        alternatives: trivia.alternatives.map(a => a.toLowerCase()),
+        timeLimit: timeLimit
     };
 }
 
 /**
  * Reaction Test Challenge
  */
-function generateReactionTest() {
+function generateReactionTest(timeLimit) {
     const delay = Math.floor(Math.random() * 3000) + 2000; // 2-5 seconds
 
     return {
         type: 'reaction',
         title: '⚡ Reaction Test',
         description: 'Click the button when it turns **GREEN**!\n\nThe button will change color shortly...',
-        delay: delay
+        delay: delay,
+        timeLimit: timeLimit
     };
 }
 
 /**
  * Memory Game Challenge
  */
-function generateMemoryGame() {
+function generateMemoryGame(timeLimit) {
     const length = Math.floor(Math.random() * 2) + 4; // 4-5 emojis
     const sequence = [];
 
@@ -169,7 +193,8 @@ function generateMemoryGame() {
         title: '🧠 Memory Challenge',
         description: `Remember this sequence:\n\n${sequence.join(' ')}\n\nYou have 5 seconds to memorize it!`,
         answer: sequence.join(''),
-        sequence: sequence
+        sequence: sequence,
+        timeLimit: timeLimit
     };
 }
 
