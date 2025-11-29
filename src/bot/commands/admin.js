@@ -96,6 +96,31 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset-quests-global')
+                .setDescription('Reset all quests for everyone (Developer only)')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset-quests-server')
+                .setDescription('Reset quests for a specific server')
+                .addStringOption(option =>
+                    option.setName('server-id')
+                        .setDescription('The server ID to reset quests for')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset-quests-user')
+                .setDescription('Reset quests for a specific user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to reset quests for')
+                        .setRequired(true)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -109,7 +134,7 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         const targetUser = interaction.options.getUser('user');
 
-        let user = UserModel.findByDiscordId(targetUser.id);
+        let user = targetUser ? UserModel.findByDiscordId(targetUser.id) : null;
 
         switch (subcommand) {
             case 'wipe-user':
@@ -132,6 +157,15 @@ module.exports = {
                 break;
             case 'reset-leaderboard':
                 await handleResetLeaderboard(interaction, targetUser, user);
+                break;
+            case 'reset-quests-global':
+                await handleResetQuestsGlobal(interaction);
+                break;
+            case 'reset-quests-server':
+                await handleResetQuestsServer(interaction);
+                break;
+            case 'reset-quests-user':
+                await handleResetQuestsUser(interaction, targetUser, user);
                 break;
         }
     }
@@ -441,6 +475,134 @@ async function handleResetLeaderboard(interaction, targetUser, user) {
         console.error('Error resetting leaderboard:', error);
         await interaction.reply({
             content: 'An error occurred while resetting leaderboard points.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleResetQuestsGlobal(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: 'Only developers can reset quests globally.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        // Delete all user quest entries
+        const result = db.prepare('DELETE FROM user_quests').run();
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🔄 Global Quest Reset')
+            .setDescription(`All quests have been reset for everyone.`)
+            .addFields(
+                {
+                    name: 'Quests Deleted',
+                    value: result.changes.toLocaleString()
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        console.log(`[ADMIN] Global quest reset by ${interaction.user.username} - ${result.changes} quests deleted`);
+    } catch (error) {
+        console.error('Error resetting quests globally:', error);
+        await interaction.reply({
+            content: 'An error occurred while resetting quests globally.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleResetQuestsServer(interaction) {
+    const serverId = interaction.options.getString('server-id');
+
+    try {
+        // Get all quests for this server
+        const quests = db.prepare('SELECT id FROM quests WHERE server_id = ?').all(serverId);
+
+        if (quests.length === 0) {
+            return interaction.reply({
+                content: 'No quests found for this server.',
+                ephemeral: true
+            });
+        }
+
+        const questIds = quests.map(q => q.id);
+
+        // Delete user quest entries for this server's quests
+        const placeholders = questIds.map(() => '?').join(',');
+        const result = db.prepare(`DELETE FROM user_quests WHERE quest_id IN (${placeholders})`).run(...questIds);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🔄 Server Quest Reset')
+            .setDescription(`All quests have been reset for server \`${serverId}\`.`)
+            .addFields(
+                {
+                    name: 'Quest Entries Deleted',
+                    value: result.changes.toLocaleString()
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        console.log(`[ADMIN] Server quest reset for ${serverId} by ${interaction.user.username} - ${result.changes} entries deleted`);
+    } catch (error) {
+        console.error('Error resetting server quests:', error);
+        await interaction.reply({
+            content: 'An error occurred while resetting server quests.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleResetQuestsUser(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: 'This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        // Delete all quest entries for this user
+        const result = db.prepare('DELETE FROM user_quests WHERE user_id = ?').run(user.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🔄 User Quest Reset')
+            .setDescription(`All quests have been reset for ${targetUser.username}.`)
+            .addFields(
+                {
+                    name: 'Quest Entries Deleted',
+                    value: result.changes.toLocaleString()
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        console.log(`[ADMIN] User quest reset for ${targetUser.username} by ${interaction.user.username} - ${result.changes} entries deleted`);
+    } catch (error) {
+        console.error('Error resetting user quests:', error);
+        await interaction.reply({
+            content: 'An error occurred while resetting user quests.',
             ephemeral: true
         });
     }
