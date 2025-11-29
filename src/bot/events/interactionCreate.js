@@ -152,6 +152,22 @@ module.exports = {
             return;
         }
 
+        // Handle autocomplete interactions
+        if (interaction.isAutocomplete()) {
+            const command = interaction.client.commands.get(interaction.commandName);
+
+            if (!command || !command.autocomplete) {
+                return;
+            }
+
+            try {
+                await command.autocomplete(interaction);
+            } catch (error) {
+                console.error('Error handling autocomplete:', error);
+            }
+            return;
+        }
+
         if (!interaction.isChatInputCommand()) return;
 
         const command = interaction.client.commands.get(interaction.commandName);

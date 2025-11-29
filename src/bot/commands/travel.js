@@ -5,7 +5,13 @@ const config = require('../../../config.json');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('travel')
-        .setDescription('Travel to another server to find more quests'),
+        .setDescription('Travel to another server to find more quests')
+        .addStringOption(option =>
+            option.setName('destination')
+                .setDescription('Server to travel to (name or ID)')
+                .setRequired(false)
+                .setAutocomplete(true)
+        ),
 
     async execute(interaction) {
         const user = UserModel.findByDiscordId(interaction.user.id);
@@ -75,8 +81,33 @@ module.exports = {
             });
         }
 
-        // Select random destination
-        const destination = availableServers[Math.floor(Math.random() * availableServers.length)];
+        // Get destination from user input or default to QuestCord server
+        const destinationInput = interaction.options.getString('destination');
+        let destination;
+
+        if (destinationInput) {
+            // Try to find by server ID or name
+            destination = availableServers.find(s =>
+                s.discord_id === destinationInput ||
+                s.name.toLowerCase() === destinationInput.toLowerCase()
+            );
+
+            if (!destination) {
+                return interaction.reply({
+                    content: `❌ Server not found. Use autocomplete to see available servers, or enter a valid server ID.`,
+                    ephemeral: true
+                });
+            }
+        } else {
+            // Default to QuestCord server (support server)
+            const questcordServerId = config.supportServer.id;
+            destination = availableServers.find(s => s.discord_id === questcordServerId);
+
+            if (!destination) {
+                // Fallback to first available server if QuestCord not found
+                destination = availableServers[0];
+            }
+        }
 
         // Calculate random travel time
         const travelTime = Math.floor(
@@ -111,5 +142,27 @@ module.exports = {
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
+    },
+
+    async autocomplete(interaction) {
+        const focusedValue = interaction.options.getFocused().toLowerCase();
+
+        // Get available servers (exclude current server)
+        const allServers = ServerModel.getOptedInServers();
+        const availableServers = allServers.filter(s => s.discord_id !== interaction.guildId);
+
+        // Filter servers by user input
+        const filtered = availableServers.filter(server =>
+            server.name.toLowerCase().includes(focusedValue) ||
+            server.discord_id.includes(focusedValue)
+        );
+
+        // Return up to 25 choices (Discord limit)
+        const choices = filtered.slice(0, 25).map(server => ({
+            name: `${server.name} (${server.member_count || 0} members)`,
+            value: server.discord_id
+        }));
+
+        await interaction.respond(choices);
     }
 };
