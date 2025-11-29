@@ -335,6 +335,15 @@ function initializeDatabase() {
         console.log('Migration completed: equipped added');
     }
 
+    // Migration: Add avatar_url to staff table
+    const staffTableInfo = db.prepare("PRAGMA table_info(staff)").all();
+    const hasAvatarUrl = staffTableInfo.some(col => col.name === 'avatar_url');
+    if (!hasAvatarUrl) {
+        console.log('Running migration: Adding avatar_url to staff...');
+        db.exec('ALTER TABLE staff ADD COLUMN avatar_url TEXT');
+        console.log('Migration completed: avatar_url added');
+    }
+
     console.log('Database initialized successfully');
 
     // Seed items if this is first run

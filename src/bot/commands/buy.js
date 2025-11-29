@@ -11,6 +11,7 @@ module.exports = {
             option.setName('item-name')
                 .setDescription('The name of the item to purchase')
                 .setRequired(true)
+                .setAutocomplete(true)
         ),
 
     async execute(interaction) {
@@ -117,5 +118,38 @@ module.exports = {
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
+    },
+
+    async autocomplete(interaction) {
+        const focusedValue = interaction.options.getFocused().toLowerCase();
+
+        // Get shop items (exclude mythic and items with 0 cost)
+        const allItems = db.prepare('SELECT * FROM items WHERE rarity != ? AND (currency_cost > 0 OR gem_cost > 0) ORDER BY currency_cost ASC')
+            .all('mythic');
+
+        const filtered = allItems.filter(item =>
+            item.item_name.toLowerCase().includes(focusedValue)
+        );
+
+        const rarityEmoji = {
+            'common': '⚪',
+            'uncommon': '🟢',
+            'rare': '🔵',
+            'epic': '🟣',
+            'legendary': '🟠'
+        };
+
+        const choices = filtered.slice(0, 25).map(item => {
+            const price = item.gem_cost > 0
+                ? `${item.currency_cost} Dakari + ${item.gem_cost} Gems`
+                : `${item.currency_cost} Dakari`;
+
+            return {
+                name: `${rarityEmoji[item.rarity] || '⚪'} ${item.item_name} - ${price}`,
+                value: item.item_name
+            };
+        });
+
+        await interaction.respond(choices);
     }
 };

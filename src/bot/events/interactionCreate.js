@@ -3,6 +3,7 @@ const { broadcastActivity } = require('../../web/server');
 const { getReportingInstance } = require('../../utils/reportingSystem');
 const { handleQuestAccept, handleCombatAttack, handleExplorationContinue, handleReactionClick } = require('../utils/questInteractions');
 const { handleShopPurchase, handleShopCancel } = require('../utils/shopInteractions');
+const { handlePvpAccept, handlePvpDecline, handlePvpAttack } = require('../utils/pvpArena');
 const { isStaff } = require('../utils/permissions');
 const { db } = require('../../database/schema');
 
@@ -30,6 +31,22 @@ module.exports = {
                 }
                 if (interaction.customId === 'cancel_buy') {
                     return await handleShopCancel(interaction);
+                }
+                // PVP Arena buttons
+                if (interaction.customId.startsWith('pvp_accept_')) {
+                    const { activeChallenges, arenaeBattles } = require('../commands/pvp');
+                    const challengeKey = interaction.customId.replace('pvp_accept_', '');
+                    return await handlePvpAccept(interaction, challengeKey, activeChallenges, arenaeBattles);
+                }
+                if (interaction.customId.startsWith('pvp_decline_')) {
+                    const { activeChallenges } = require('../commands/pvp');
+                    const challengeKey = interaction.customId.replace('pvp_decline_', '');
+                    return await handlePvpDecline(interaction, challengeKey, activeChallenges);
+                }
+                if (interaction.customId.startsWith('pvp_battle_attack_')) {
+                    const { arenaeBattles } = require('../commands/pvp');
+                    const battleId = interaction.customId.replace('pvp_battle_attack_', '');
+                    return await handlePvpAttack(interaction, battleId, arenaeBattles);
                 }
                 // Help menu buttons
                 if (interaction.customId === 'help_tutorial') {

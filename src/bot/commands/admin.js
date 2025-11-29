@@ -134,6 +134,7 @@ module.exports = {
                     option.setName('item-name')
                         .setDescription('The name of the item to give')
                         .setRequired(true)
+                        .setAutocomplete(true)
                 )
                 .addIntegerOption(option =>
                     option.setName('quantity')
@@ -150,6 +151,7 @@ module.exports = {
                     option.setName('command')
                         .setDescription('The command name to disable')
                         .setRequired(true)
+                        .setAutocomplete(true)
                 )
         )
         .addSubcommand(subcommand =>
@@ -160,6 +162,7 @@ module.exports = {
                     option.setName('command')
                         .setDescription('The command name to enable')
                         .setRequired(true)
+                        .setAutocomplete(true)
                 )
         )
         .addSubcommand(subcommand =>
@@ -170,6 +173,7 @@ module.exports = {
                     option.setName('command')
                         .setDescription('The command name to restrict')
                         .setRequired(true)
+                        .setAutocomplete(true)
                 )
                 .addUserOption(option =>
                     option.setName('user')
@@ -185,6 +189,7 @@ module.exports = {
                     option.setName('command')
                         .setDescription('The command name to unrestrict')
                         .setRequired(true)
+                        .setAutocomplete(true)
                 )
                 .addUserOption(option =>
                     option.setName('user')
@@ -205,6 +210,7 @@ module.exports = {
                     option.setName('command')
                         .setDescription('Show restrictions for specific command')
                         .setRequired(false)
+                        .setAutocomplete(true)
                 )
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -274,6 +280,69 @@ module.exports = {
             case 'list-restrictions':
                 await handleListRestrictions(interaction);
                 break;
+        }
+    },
+
+    async autocomplete(interaction) {
+        const subcommand = interaction.options.getSubcommand();
+        const focusedOption = interaction.options.getFocused(true);
+
+        if (subcommand === 'give-item' && focusedOption.name === 'item-name') {
+            // Autocomplete for item names
+            const focusedValue = focusedOption.value.toLowerCase();
+            const allItems = db.prepare('SELECT * FROM items ORDER BY rarity, item_name').all();
+
+            const filtered = allItems.filter(item =>
+                item.item_name.toLowerCase().includes(focusedValue)
+            );
+
+            const rarityEmoji = {
+                'common': '⚪',
+                'uncommon': '🟢',
+                'rare': '🔵',
+                'epic': '🟣',
+                'legendary': '🟠',
+                'mythic': '🔴'
+            };
+
+            const choices = filtered.slice(0, 25).map(item => ({
+                name: `${rarityEmoji[item.rarity] || '⚪'} ${item.item_name} (${item.item_type})`,
+                value: item.item_name
+            }));
+
+            return interaction.respond(choices);
+        }
+
+        if (['disable-command', 'enable-command', 'restrict-command', 'unrestrict-command', 'list-restrictions'].includes(subcommand) && focusedOption.name === 'command') {
+            // Autocomplete for command names
+            const focusedValue = focusedOption.value.toLowerCase();
+            const commands = interaction.client.commands;
+
+            let availableCommands = [];
+
+            if (subcommand === 'enable-command') {
+                // Show only disabled commands
+                const disabledCommands = db.prepare('SELECT command_name FROM disabled_commands').all();
+                availableCommands = disabledCommands.map(cmd => cmd.command_name);
+            } else if (subcommand === 'unrestrict-command' || subcommand === 'list-restrictions') {
+                // Show only commands with restrictions
+                const restrictedCommands = db.prepare('SELECT DISTINCT command_name FROM command_whitelist').all();
+                availableCommands = restrictedCommands.map(cmd => cmd.command_name);
+            } else {
+                // Show all commands except admin
+                availableCommands = Array.from(commands.keys()).filter(cmd => cmd !== 'admin');
+            }
+
+            const filtered = availableCommands.filter(cmd =>
+                cmd.toLowerCase().includes(focusedValue)
+            );
+
+            const choices = filtered.slice(0, 25).map(cmd => ({
+                name: `/${cmd}`,
+                value: cmd
+            }));
+
+            return interaction.respond(choices);
         }
     }
 };
