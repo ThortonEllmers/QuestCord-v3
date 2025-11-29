@@ -1,5 +1,5 @@
 const { ActivityType } = require('discord.js');
-const { ServerModel, GlobalStatsModel } = require('../../database/models');
+const { ServerModel, GlobalStatsModel, UserModel } = require('../../database/models');
 const { broadcastStats } = require('../../web/server');
 
 // List of commands to cycle through in rich presence
@@ -32,6 +32,7 @@ module.exports = {
         setInterval(() => updatePresence(client), 2 * 60 * 1000);
 
         await updateGuildStats(client);
+        await updateUserDisplayNames(client);
 
         setInterval(() => updateGuildStats(client), 60000);
     }
@@ -79,5 +80,42 @@ async function updateGuildStats(client) {
         console.log(`Stats updated: ${guilds.size} servers, ${totalMembers} total members`);
     } catch (error) {
         console.error('Error updating guild stats:', error);
+    }
+}
+
+async function updateUserDisplayNames(client) {
+    try {
+        console.log('[Display Names] Starting update of user display names...');
+        let updatedCount = 0;
+
+        // Get all users from database
+        const { db } = require('../../database/schema');
+        const allUsers = db.prepare('SELECT discord_id, username FROM users').all();
+
+        // Iterate through guilds to find and update users
+        for (const [guildId, guild] of client.guilds.cache) {
+            try {
+                // Fetch all members for this guild
+                await guild.members.fetch();
+
+                // Update each user's display name
+                for (const user of allUsers) {
+                    const member = guild.members.cache.get(user.discord_id);
+                    if (member) {
+                        const displayName = member.user.globalName || member.user.username;
+                        if (displayName !== user.username) {
+                            UserModel.create(user.discord_id, displayName);
+                            updatedCount++;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`Error fetching members for guild ${guild.name}:`, err);
+            }
+        }
+
+        console.log(`[Display Names] Updated ${updatedCount} user display names`);
+    } catch (error) {
+        console.error('Error updating user display names:', error);
     }
 }

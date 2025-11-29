@@ -86,6 +86,16 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset-leaderboard')
+                .setDescription('Reset a user\'s leaderboard points for current month')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to reset leaderboard points for')
+                        .setRequired(true)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -119,6 +129,9 @@ module.exports = {
                 break;
             case 'view-user':
                 await handleViewUser(interaction, targetUser, user);
+                break;
+            case 'reset-leaderboard':
+                await handleResetLeaderboard(interaction, targetUser, user);
                 break;
         }
     }
@@ -385,4 +398,50 @@ async function handleViewUser(interaction, targetUser, user) {
         .setTimestamp();
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleResetLeaderboard(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: 'This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+
+        // Delete leaderboard entry for current month
+        db.prepare('DELETE FROM leaderboard WHERE user_id = ? AND month = ? AND year = ?')
+            .run(user.id, month, year);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('Leaderboard Points Reset')
+            .setDescription(`Leaderboard points for ${targetUser.username} have been reset for ${now.toLocaleString('default', { month: 'long' })} ${year}`)
+            .addFields(
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        // Broadcast updated leaderboard
+        const { broadcastLeaderboard } = require('../../web/server');
+        const topPlayers = LeaderboardModel.getTopPlayers(month, year, 10);
+        broadcastLeaderboard(topPlayers);
+
+        console.log(`[ADMIN] Leaderboard reset for ${targetUser.username} by ${interaction.user.username}`);
+    } catch (error) {
+        console.error('Error resetting leaderboard:', error);
+        await interaction.reply({
+            content: 'An error occurred while resetting leaderboard points.',
+            ephemeral: true
+        });
+    }
 }

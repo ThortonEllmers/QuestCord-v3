@@ -152,14 +152,37 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function formatLargeNumber(num) {
+    if (num >= 1e15) {
+        return (num / 1e15).toFixed(1).replace(/\.0$/, '') + 'Q';
+    }
+    if (num >= 1e12) {
+        return (num / 1e12).toFixed(1).replace(/\.0$/, '') + 'T';
+    }
+    if (num >= 1e9) {
+        return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+    }
+    if (num >= 1e6) {
+        return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1e3) {
+        return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return num.toLocaleString();
+}
+
 function updateStats(stats) {
     const serverStat = document.querySelector('.stat-card:nth-child(1) .stat-value');
     const userStat = document.querySelector('.stat-card:nth-child(2) .stat-value');
     const questStat = document.querySelector('.stat-card:nth-child(3) .stat-value');
+    const currencyStat = document.querySelector('.stat-card:nth-child(4) .stat-value');
+    const gemsStat = document.querySelector('.stat-card:nth-child(5) .stat-value');
 
     if (serverStat) serverStat.textContent = stats.totalServers.toLocaleString();
     if (userStat) userStat.textContent = stats.totalUsers.toLocaleString();
     if (questStat) questStat.textContent = stats.totalQuestsCompleted.toLocaleString();
+    if (currencyStat) currencyStat.textContent = formatLargeNumber(stats.totalCurrency);
+    if (gemsStat) gemsStat.textContent = formatLargeNumber(stats.totalGems);
 }
 
 function updateLeaderboard(players) {
@@ -173,20 +196,27 @@ function updateLeaderboard(players) {
         return;
     }
 
-    players.forEach((player, index) => {
+    const topThree = document.createElement('div');
+    topThree.className = 'leaderboard-top-three';
+
+    players.slice(0, 3).forEach((player, index) => {
         const item = document.createElement('div');
         item.className = `leaderboard-item rank-${index + 1}`;
 
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1;
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
 
         item.innerHTML = `
             <div class="rank-badge">${medal}</div>
-            <div class="player-name">${escapeHtml(player.username)}</div>
-            <div class="player-score">${player.score.toLocaleString()} pts</div>
+            <div class="player-info">
+                <div class="player-name">${escapeHtml(player.username)}</div>
+                <div class="player-score">${player.score.toLocaleString()} pts</div>
+            </div>
         `;
 
-        container.appendChild(item);
+        topThree.appendChild(item);
     });
+
+    container.appendChild(topThree);
 }
 
 function updateStaff(staff) {
@@ -199,9 +229,14 @@ function updateStaff(staff) {
         const card = document.createElement('div');
         card.className = 'staff-card';
 
+        const avatarHtml = member.avatar_url ? `<img src="${escapeHtml(member.avatar_url)}" alt="${escapeHtml(member.username)}" class="staff-avatar">` : '';
+
         card.innerHTML = `
-            <div class="staff-name">${escapeHtml(member.username)}</div>
-            <div class="staff-role ${member.role.toLowerCase()}">${escapeHtml(member.role)}</div>
+            ${avatarHtml}
+            <div class="staff-info">
+                <div class="staff-name">${escapeHtml(member.username)}</div>
+                <div class="staff-role ${member.role.toLowerCase()}">${escapeHtml(member.role)}</div>
+            </div>
         `;
 
         container.appendChild(card);

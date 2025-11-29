@@ -3,6 +3,7 @@ const { UserModel, QuestModel, UserQuestModel, ServerModel, GlobalStatsModel, Le
 const { LevelSystem } = require('../../utils/levelSystem');
 const { QuestScaling } = require('./questScaling');
 const { getReportingInstance } = require('../../utils/reportingSystem');
+const { broadcastLeaderboard, broadcastStats } = require('../../web/server');
 const config = require('../../../config.json');
 
 // Store active quests in memory
@@ -319,6 +320,21 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
     // Update leaderboard
     const now = new Date();
     LeaderboardModel.updateScore(user.id, scaledCurrency + (scaledGems * 10), now.getMonth() + 1, now.getFullYear());
+
+    // Broadcast real-time updates
+    const topPlayers = LeaderboardModel.getTopPlayers(now.getMonth() + 1, now.getFullYear(), 10);
+    broadcastLeaderboard(topPlayers);
+
+    const stats = GlobalStatsModel.get();
+    const totalCurrency = GlobalStatsModel.getTotalCurrencyInCirculation();
+    const totalGems = GlobalStatsModel.getTotalGemsInCirculation();
+    broadcastStats({
+        totalServers: stats.total_servers,
+        totalUsers: stats.total_users,
+        totalQuestsCompleted: stats.total_quests_completed,
+        totalCurrency: totalCurrency,
+        totalGems: totalGems
+    });
 
     // Add experience with level-based scaling
     const questExp = QuestScaling.getBonusXP(user.level, quest.difficulty);

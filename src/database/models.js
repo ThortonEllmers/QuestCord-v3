@@ -327,7 +327,19 @@ class ActivityLogModel {
     }
 
     static getRecent(limit = 50) {
-        const stmt = db.prepare('SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT ?');
+        const stmt = db.prepare(`
+            SELECT
+                al.id,
+                al.user_id,
+                COALESCE(u.username, al.username) as username,
+                al.action,
+                al.details,
+                al.timestamp
+            FROM activity_log al
+            LEFT JOIN users u ON al.user_id = u.id
+            ORDER BY al.timestamp DESC
+            LIMIT ?
+        `);
         return stmt.all(limit);
     }
 
