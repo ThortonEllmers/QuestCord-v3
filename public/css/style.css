@@ -493,8 +493,17 @@ body > * {
 }
 
 .leaderboard-container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 40px auto;
+}
+
+.leaderboard-top-three {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 30px;
 }
 
 .leaderboard-grid {
@@ -666,6 +675,7 @@ body > * {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
 }
 
 .faq-item h3 {
@@ -845,10 +855,11 @@ body > * {
 
     .content-with-image {
         gap: 40px;
+        grid-template-columns: 1fr;
     }
 
-    .content-image img {
-        max-width: 400px;
+    .content-image {
+        display: none;
     }
 
     .features-grid {
@@ -995,7 +1006,7 @@ body > * {
     }
 
     .content-image {
-        padding: 10px;
+        display: none;
     }
 
     .content-image img {

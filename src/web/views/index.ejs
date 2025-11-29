@@ -46,11 +46,11 @@
                     <div class="stat-label">Quests Completed</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value"><%= stats.total_currency.toLocaleString() %></div>
+                    <div class="stat-value"><%= stats.total_currency_formatted %></div>
                     <div class="stat-label">Currency in Circulation</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value"><%= stats.total_gems.toLocaleString() %></div>
+                    <div class="stat-value"><%= stats.total_gems_formatted %></div>
                     <div class="stat-label">Gems in Circulation</div>
                 </div>
             </div>
@@ -117,39 +117,21 @@
                         <% if (topPlayers.length === 0) { %>
                             <p class="empty-state">No rankings yet. Be the first to compete!</p>
                         <% } else { %>
-                            <div class="leaderboard-grid">
-                                <!-- Top 3 - Left Column -->
-                                <div class="leaderboard-column top-three">
-                                    <h3 class="column-title">Top 3</h3>
-                                    <% topPlayers.slice(0, 3).forEach((player, index) => { %>
-                                        <div class="leaderboard-item rank-<%= index + 1 %>">
-                                            <div class="rank-badge">
-                                                <% if (index === 0) { %>🥇
-                                                <% } else if (index === 1) { %>🥈
-                                                <% } else if (index === 2) { %>🥉
-                                                <% } %>
-                                            </div>
-                                            <div class="player-info">
-                                                <div class="player-name"><%= player.username %></div>
-                                                <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
-                                            </div>
+                            <div class="leaderboard-top-three">
+                                <% topPlayers.slice(0, 3).forEach((player, index) => { %>
+                                    <div class="leaderboard-item rank-<%= index + 1 %>">
+                                        <div class="rank-badge">
+                                            <% if (index === 0) { %>🥇
+                                            <% } else if (index === 1) { %>🥈
+                                            <% } else if (index === 2) { %>🥉
+                                            <% } %>
                                         </div>
-                                    <% }); %>
-                                </div>
-
-                                <!-- Ranks 4-10 - Right Column -->
-                                <div class="leaderboard-column rest">
-                                    <h3 class="column-title">Top 4-10</h3>
-                                    <% topPlayers.slice(3, 10).forEach((player, index) => { %>
-                                        <div class="leaderboard-item rank-<%= index + 4 %>">
-                                            <div class="rank-badge"><%= index + 4 %></div>
-                                            <div class="player-info">
-                                                <div class="player-name"><%= player.username %></div>
-                                                <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
-                                            </div>
+                                        <div class="player-info">
+                                            <div class="player-name"><%= player.username %></div>
+                                            <div class="player-score"><%= player.score.toLocaleString() %> pts</div>
                                         </div>
-                                    <% }); %>
-                                </div>
+                                    </div>
+                                <% }); %>
                             </div>
                         <% } %>
                     </div>
