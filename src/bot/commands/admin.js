@@ -203,7 +203,7 @@ async function handleResetUser(interaction, targetUser, user) {
             .addFields(
                 {
                     name: 'Reset Values',
-                    value: `Level: 1\nCurrency: ${config.economy.defaultCurrency}\nGems: ${config.economy.defaultGems}\nQuests: 0`
+                    value: `Level: 1\nDakari: ${config.economy.defaultCurrency}\nGems: ${config.economy.defaultGems}\nQuests: 0`
                 },
                 {
                     name: 'Staff Member',
@@ -237,8 +237,8 @@ async function handleGiveCurrency(interaction, targetUser, user) {
 
     const embed = new EmbedBuilder()
         .setColor(config.theme.colors.success)
-        .setTitle('Currency Given')
-        .setDescription(`${amount.toLocaleString()} currency has been given to ${targetUser.username}`)
+        .setTitle('Dakari Given')
+        .setDescription(`${amount.toLocaleString()} Dakari has been given to ${targetUser.username}`)
         .addFields(
             {
                 name: 'New Balance',
@@ -359,7 +359,7 @@ async function handleViewUser(interaction, targetUser, user) {
                 inline: false
             },
             {
-                name: 'Currency',
+                name: 'Dakari',
                 value: user.currency.toLocaleString(),
                 inline: true
             },

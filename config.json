@@ -21,7 +21,7 @@
     "maxSpawnDelay": 7200000
   },
   "economy": {
-    "defaultCurrency": 100,
+    "defaultCurrency": 0,
     "defaultGems": 0
   },
   "leaderboard": {

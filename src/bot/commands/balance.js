@@ -20,7 +20,7 @@ module.exports = {
             .setTitle(`${interaction.user.username}'s Balance`)
             .addFields(
                 {
-                    name: 'Currency',
+                    name: 'Dakari',
                     value: user.currency.toLocaleString(),
                     inline: true
                 },

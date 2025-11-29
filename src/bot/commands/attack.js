@@ -90,7 +90,7 @@ module.exports = {
                 .addFields(
                     {
                         name: 'Your Rewards',
-                        value: `+${isTopDealer ? Math.floor(boss.reward_currency * 1.5) : boss.reward_currency} currency\n+${isTopDealer ? Math.floor(boss.reward_gems * 1.5) : boss.reward_gems} gems\n+${userExpReward} XP`
+                        value: `+${isTopDealer ? Math.floor(boss.reward_currency * 1.5) : boss.reward_currency} Dakari\n+${isTopDealer ? Math.floor(boss.reward_gems * 1.5) : boss.reward_gems} gems\n+${userExpReward} XP`
                     },
                     {
                         name: 'Total Participants',

@@ -1,7 +1,7 @@
 const { UserModel, ActivityLogModel } = require('../../database/models');
 const { broadcastActivity } = require('../../web/server');
 const { getReportingInstance } = require('../../utils/reportingSystem');
-const { handleQuestAccept, handleCombatAttack, handleExplorationContinue } = require('../utils/questInteractions');
+const { handleQuestAccept, handleCombatAttack, handleExplorationContinue, handleReactionClick } = require('../utils/questInteractions');
 
 module.exports = {
     name: 'interactionCreate',
@@ -17,6 +17,9 @@ module.exports = {
                 }
                 if (interaction.customId.startsWith('explore_continue_')) {
                     return await handleExplorationContinue(interaction);
+                }
+                if (interaction.customId === 'reaction_button') {
+                    return await handleReactionClick(interaction);
                 }
                 // Help menu buttons
                 if (interaction.customId === 'help_tutorial') {
@@ -88,7 +91,7 @@ module.exports = {
                                     inline: false
                                 },
                                 {
-                                    name: 'Currency',
+                                    name: 'Dakari',
                                     value: user.currency.toLocaleString(),
                                     inline: true
                                 },

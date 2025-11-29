@@ -65,8 +65,8 @@ module.exports = {
             .setTitle('Progression & Rewards')
             .addFields(
                 {
-                    name: 'Currency & Gems',
-                    value: 'Earn currency and gems from quests and bosses. Use them in the shop to purchase items.'
+                    name: 'Dakari & Gems',
+                    value: 'Earn Dakari and gems from quests and bosses. Use them in the shop to purchase items.'
                 },
                 {
                     name: 'Leaderboard',

@@ -36,7 +36,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.primary)
             .setTitle(`📜 Quests in ${interaction.guild.name}`)
-            .setDescription(`You have completed **${completedCount}/${config.quest.questsPerServer}** quests in this server today.\n\n**How to accept a quest:**\nClick the button below the quest you want to accept. Different quest types have different completion mechanics:\n\n🗡️ **Combat** - Battle minigame\n🌿 **Gathering** - Timed collection\n🗺️ **Exploration** - Journey through locations\n📦 **Delivery** - Timed travel\n💬 **Social** - Instant completion`);
+            .setDescription(`You have completed **${completedCount}/${config.quest.questsPerServer}** quests in this server today.\n\n**How it works:**\nClick a button to accept a quest and face a random challenge:\n\n🔤 **Word Scramble** - Unscramble a word\n🔢 **Math Challenge** - Solve an equation\n❓ **Trivia** - Answer a question\n⚡ **Reaction Test** - Click when green\n🧠 **Memory Game** - Remember emoji sequence\n\n✅ Success = Full rewards\n❌ Failed = Cannot retry today`);
 
         if (quests.length === 0) {
             embed.addFields({
@@ -65,11 +65,11 @@ module.exports = {
             }[quest.type] || '📋';
 
             const userQuest = user ? UserQuestModel.getUserQuests(user.id, interaction.guild.id).find(uq => uq.quest_id === quest.id) : null;
-            const status = userQuest?.completed ? ' ✅' : '';
+            const status = userQuest?.completed ? ' ✅' : (userQuest?.failed ? ' ❌ FAILED' : '');
 
             embed.addFields({
                 name: `${typeEmoji} ${quest.quest_name}${status}`,
-                value: `${quest.description}\n\n${difficultyEmoji} Difficulty: ${quest.difficulty}\n💰 Rewards: ${quest.reward_currency} currency, ${quest.reward_gems} gems`,
+                value: `${quest.description}\n\n${difficultyEmoji} Difficulty: ${quest.difficulty}\n💰 Rewards: ${quest.reward_currency} Dakari, ${quest.reward_gems} gems`,
                 inline: false
             });
 
@@ -82,7 +82,7 @@ module.exports = {
                 });
             }
 
-            if (!userQuest || !userQuest.completed) {
+            if (!userQuest || (!userQuest.completed && !userQuest.failed)) {
                 buttons.push(
                     new ButtonBuilder()
                         .setCustomId(`accept_quest_${quest.id}`)

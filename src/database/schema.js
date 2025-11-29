@@ -18,10 +18,14 @@ function initializeDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             discord_id TEXT UNIQUE NOT NULL,
             username TEXT NOT NULL,
-            currency INTEGER DEFAULT 100,
+            currency INTEGER DEFAULT 0,
             gems INTEGER DEFAULT 0,
             total_quests INTEGER DEFAULT 0,
             current_server_id TEXT,
+            last_quest_time INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            experience INTEGER DEFAULT 0,
+            total_experience INTEGER DEFAULT 0,
             created_at INTEGER DEFAULT (strftime('%s', 'now')),
             updated_at INTEGER DEFAULT (strftime('%s', 'now'))
         );
@@ -65,6 +69,7 @@ function initializeDatabase() {
             user_id INTEGER NOT NULL,
             quest_id INTEGER NOT NULL,
             completed INTEGER DEFAULT 0,
+            failed INTEGER DEFAULT 0,
             progress INTEGER DEFAULT 0,
             completed_at INTEGER,
             created_at INTEGER DEFAULT (strftime('%s', 'now')),
@@ -181,6 +186,55 @@ function initializeDatabase() {
 
         CREATE INDEX IF NOT EXISTS idx_user_items_user_id ON user_items(user_id);
     `);
+
+    // Migrations
+    const userTableInfo = db.prepare("PRAGMA table_info(users)").all();
+    const questTableInfo = db.prepare("PRAGMA table_info(user_quests)").all();
+
+    // Migration: Add missing columns to users table
+    const hasLastQuestTime = userTableInfo.some(col => col.name === 'last_quest_time');
+    const hasLevel = userTableInfo.some(col => col.name === 'level');
+    const hasExperience = userTableInfo.some(col => col.name === 'experience');
+    const hasTotalExperience = userTableInfo.some(col => col.name === 'total_experience');
+
+    if (!hasLastQuestTime) {
+        console.log('Running migration: Adding last_quest_time to users...');
+        db.exec('ALTER TABLE users ADD COLUMN last_quest_time INTEGER DEFAULT 0');
+        console.log('Migration completed: last_quest_time added');
+    }
+
+    if (!hasLevel) {
+        console.log('Running migration: Adding level to users...');
+        db.exec('ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1');
+        console.log('Migration completed: level added');
+    }
+
+    if (!hasExperience) {
+        console.log('Running migration: Adding experience to users...');
+        db.exec('ALTER TABLE users ADD COLUMN experience INTEGER DEFAULT 0');
+        console.log('Migration completed: experience added');
+    }
+
+    if (!hasTotalExperience) {
+        console.log('Running migration: Adding total_experience to users...');
+        db.exec('ALTER TABLE users ADD COLUMN total_experience INTEGER DEFAULT 0');
+        console.log('Migration completed: total_experience added');
+    }
+
+    // Migration: Add 'failed' column to user_quests if it doesn't exist
+    const hasFailedColumn = questTableInfo.some(col => col.name === 'failed');
+
+    if (!hasFailedColumn) {
+        console.log('Running migration: Adding failed column to user_quests...');
+        db.exec('ALTER TABLE user_quests ADD COLUMN failed INTEGER DEFAULT 0');
+        console.log('Migration completed: failed column added');
+    }
+
+    // Migration: Update default currency from 100 to 0 for new users only
+    const hasCurrency = userTableInfo.find(col => col.name === 'currency');
+    if (hasCurrency && hasCurrency.dflt_value === '100') {
+        console.log('Note: Default currency is now 0 for new users (existing users unaffected)');
+    }
 
     console.log('Database initialized successfully');
 }

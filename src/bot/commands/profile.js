@@ -46,7 +46,7 @@ module.exports = {
                     inline: false
                 },
                 {
-                    name: 'Currency',
+                    name: 'Dakari',
                     value: user.currency.toLocaleString(),
                     inline: true
                 },

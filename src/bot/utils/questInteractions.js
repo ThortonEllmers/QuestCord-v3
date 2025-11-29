@@ -4,6 +4,7 @@ const { LevelSystem } = require('../../utils/levelSystem');
 const { QuestScaling } = require('./questScaling');
 const { getReportingInstance } = require('../../utils/reportingSystem');
 const { broadcastLeaderboard, broadcastStats } = require('../../web/server');
+const { generateChallenge, checkAnswer, createReactionButtons } = require('./questChallenges');
 const config = require('../../../config.json');
 
 // Store active quests in memory
@@ -65,26 +66,8 @@ async function handleQuestAccept(interaction) {
         UserQuestModel.assignQuest(user.id, quest.id);
     }
 
-    // Route to appropriate quest type handler
-    switch (quest.type) {
-        case 'combat':
-            await startCombatQuest(interaction, quest, user);
-            break;
-        case 'gathering':
-            await startGatheringQuest(interaction, quest, user);
-            break;
-        case 'exploration':
-            await startExplorationQuest(interaction, quest, user);
-            break;
-        case 'delivery':
-            await startDeliveryQuest(interaction, quest, user);
-            break;
-        case 'social':
-            await startSocialQuest(interaction, quest, user);
-            break;
-        default:
-            await startGenericQuest(interaction, quest, user);
-    }
+    // Start universal challenge quest
+    await startChallengeQuest(interaction, quest, user);
 }
 
 // ===== COMBAT QUEST: Button mashing minigame =====
@@ -356,7 +339,7 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
         .addFields(
             {
                 name: '💰 Rewards Earned',
-                value: `+${scaledCurrency} currency\n+${scaledGems} gems\n+${questExp} XP`,
+                value: `+${scaledCurrency} Dakari\n+${scaledGems} gems\n+${questExp} XP`,
                 inline: true
             },
             {
@@ -373,7 +356,7 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
 
         embed.addFields({
             name: `🎉 Level Up! ${user.level} → ${levelResult.newLevel}`,
-            value: `You reached level ${levelResult.newLevel}!\n+${rewards.currency} currency\n+${rewards.gems} gems`
+            value: `You reached level ${levelResult.newLevel}!\n+${rewards.currency} Dakari\n+${rewards.gems} gems`
         });
     } else {
         const progressBar = LevelSystem.getProgressBar(levelResult.newCurrentExp, levelResult.requiredExp);
@@ -399,8 +382,178 @@ async function completeQuest(interaction, quest, user, isFollowUp = false) {
     }
 }
 
+// ===== UNIVERSAL CHALLENGE QUEST SYSTEM =====
+async function startChallengeQuest(interaction, quest, user) {
+    const challenge = generateChallenge();
+    const key = `${user.id}_${quest.id}`;
+
+    activeQuests.set(key, {
+        challenge,
+        questId: quest.id,
+        userId: user.id,
+        startTime: Date.now()
+    });
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTitle(challenge.title)
+        .setDescription(challenge.description);
+
+    if (challenge.type === 'reaction') {
+        // Reaction test: Show waiting button, then turn green
+        const row = createReactionButtons(false);
+
+        await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+
+        // Wait for the random delay, then make button green
+        setTimeout(async () => {
+            const greenRow = createReactionButtons(true);
+            embed.setDescription('Click the button **NOW**! ⚡');
+
+            try {
+                await interaction.editReply({ embeds: [embed], components: [greenRow] });
+
+                // Set timeout for failure (5 seconds to click)
+                setTimeout(async () => {
+                    if (activeQuests.has(key)) {
+                        activeQuests.delete(key);
+                        await failQuest(interaction, quest, user, true);
+                    }
+                }, 5000);
+            } catch (error) {
+                console.error('Error updating reaction test:', error);
+            }
+        }, challenge.delay);
+
+    } else if (challenge.type === 'memory') {
+        // Memory game: Show sequence, then ask user to type it
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        // Wait 5 seconds for memorization
+        setTimeout(async () => {
+            embed.setDescription(`Type the emoji sequence you saw!\n\nYou have 30 seconds to respond.`);
+            try {
+                await interaction.editReply({ embeds: [embed], components: [] });
+
+                // Set up message collector
+                const filter = m => m.author.id === interaction.user.id;
+                const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+
+                collector.on('collect', async (message) => {
+                    const questData = activeQuests.get(key);
+                    if (!questData) return;
+
+                    const isCorrect = checkAnswer(challenge, message.content);
+                    activeQuests.delete(key);
+
+                    // Delete user's answer message
+                    try {
+                        await message.delete();
+                    } catch (e) {}
+
+                    if (isCorrect) {
+                        await completeQuest(interaction, quest, user, true);
+                    } else {
+                        await failQuest(interaction, quest, user, true);
+                    }
+                });
+
+                collector.on('end', async (collected) => {
+                    if (collected.size === 0 && activeQuests.has(key)) {
+                        activeQuests.delete(key);
+                        await failQuest(interaction, quest, user, true);
+                    }
+                });
+            } catch (error) {
+                console.error('Error in memory game:', error);
+            }
+        }, 5000);
+
+    } else {
+        // Word scramble, math, or trivia: User types answer
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        const filter = m => m.author.id === interaction.user.id;
+        const collector = interaction.channel.createMessageCollector({ filter, time: 30000, max: 1 });
+
+        collector.on('collect', async (message) => {
+            const questData = activeQuests.get(key);
+            if (!questData) return;
+
+            const isCorrect = checkAnswer(challenge, message.content);
+            activeQuests.delete(key);
+
+            // Delete user's answer message
+            try {
+                await message.delete();
+            } catch (e) {}
+
+            if (isCorrect) {
+                await completeQuest(interaction, quest, user, true);
+            } else {
+                await failQuest(interaction, quest, user, true);
+            }
+        });
+
+        collector.on('end', async (collected) => {
+            if (collected.size === 0 && activeQuests.has(key)) {
+                activeQuests.delete(key);
+                await failQuest(interaction, quest, user, true);
+            }
+        });
+    }
+}
+
+// Handle reaction button click
+async function handleReactionClick(interaction) {
+    if (!interaction.customId.startsWith('reaction_button')) return;
+
+    const key = `${interaction.user.id}_${Object.keys(activeQuests.keys()).find(k => k.startsWith(interaction.user.id))}`;
+    const questData = Array.from(activeQuests.values()).find(q => q.userId === interaction.user.id);
+
+    if (!questData) {
+        return interaction.reply({ content: 'No active reaction challenge found.', ephemeral: true });
+    }
+
+    const actualKey = `${questData.userId}_${questData.questId}`;
+    const quest = QuestModel.findById(questData.questId);
+    const user = UserModel.findById(questData.userId);
+
+    activeQuests.delete(actualKey);
+    await completeQuest(interaction, quest, user, false);
+}
+
+// Fail a quest
+async function failQuest(interaction, quest, user, isFollowUp) {
+    const { db } = require('../../database/schema');
+
+    // Mark quest as failed
+    db.prepare(`
+        UPDATE user_quests
+        SET failed = 1
+        WHERE user_id = ? AND quest_id = ?
+    `).run(user.id, quest.id);
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.error)
+        .setTitle('❌ Quest Failed!')
+        .setDescription(`**${quest.quest_name}**\n\nYou failed the challenge. This quest is now marked as failed and cannot be retried today.\n\nUse \`/quests\` to see available quests.`)
+        .setTimestamp();
+
+    if (isFollowUp) {
+        try {
+            await interaction.followUp({ embeds: [embed], ephemeral: true });
+        } catch (error) {
+            console.error('Error sending quest failure follow-up:', error);
+        }
+    } else {
+        await interaction.update({ embeds: [embed], components: [] });
+    }
+}
+
 module.exports = {
     handleQuestAccept,
     handleCombatAttack,
-    handleExplorationContinue
+    handleExplorationContinue,
+    handleReactionClick
 };
