@@ -185,10 +185,8 @@
                         <% if (member.avatar_url) { %>
                             <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
                         <% } %>
-                        <div class="staff-info">
-                            <div class="staff-name"><%= member.username %></div>
-                            <div class="staff-role <%= member.role.toLowerCase() %>"><%= member.role %></div>
-                        </div>
+                        <div class="staff-name"><%= member.username %></div>
+                        <div class="staff-role <%= member.role.toLowerCase() %>"><%= member.role %></div>
                     </div>
                 <% }); %>
             </div>

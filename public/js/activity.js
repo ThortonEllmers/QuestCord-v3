@@ -233,10 +233,8 @@ function updateStaff(staff) {
 
         card.innerHTML = `
             ${avatarHtml}
-            <div class="staff-info">
-                <div class="staff-name">${escapeHtml(member.username)}</div>
-                <div class="staff-role ${member.role.toLowerCase()}">${escapeHtml(member.role)}</div>
-            </div>
+            <div class="staff-name">${escapeHtml(member.username)}</div>
+            <div class="staff-role ${member.role.toLowerCase()}">${escapeHtml(member.role)}</div>
         `;
 
         container.appendChild(card);

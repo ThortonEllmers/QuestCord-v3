@@ -697,13 +697,11 @@ body > * {
 }
 
 .staff-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 20px 25px;
+    padding: 25px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
     transition: all 0.3s ease;
 }
 
@@ -714,25 +712,19 @@ body > * {
 }
 
 .staff-avatar {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
+    margin: 0 auto 15px;
     border: 3px solid rgba(88, 101, 242, 0.5);
     object-fit: cover;
-    flex-shrink: 0;
-}
-
-.staff-info {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    flex-grow: 1;
+    display: block;
 }
 
 .staff-name {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    margin: 0;
+    margin-bottom: 10px;
 }
 
 .staff-role {
