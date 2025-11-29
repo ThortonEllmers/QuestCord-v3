@@ -26,6 +26,13 @@ function initializeDatabase() {
             level INTEGER DEFAULT 1,
             experience INTEGER DEFAULT 0,
             total_experience INTEGER DEFAULT 0,
+            pvp_enabled INTEGER DEFAULT 0,
+            attack INTEGER DEFAULT 10,
+            defense INTEGER DEFAULT 10,
+            health INTEGER DEFAULT 100,
+            max_health INTEGER DEFAULT 100,
+            pvp_wins INTEGER DEFAULT 0,
+            pvp_losses INTEGER DEFAULT 0,
             created_at INTEGER DEFAULT (strftime('%s', 'now')),
             updated_at INTEGER DEFAULT (strftime('%s', 'now'))
         );
@@ -168,6 +175,10 @@ function initializeDatabase() {
             item_name TEXT UNIQUE NOT NULL,
             description TEXT NOT NULL,
             rarity TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            attack_power INTEGER DEFAULT 0,
+            defense_power INTEGER DEFAULT 0,
+            crit_chance INTEGER DEFAULT 0,
             currency_cost INTEGER DEFAULT 0,
             gem_cost INTEGER DEFAULT 0,
             created_at INTEGER DEFAULT (strftime('%s', 'now'))
@@ -178,6 +189,7 @@ function initializeDatabase() {
             user_id INTEGER NOT NULL,
             item_id INTEGER NOT NULL,
             quantity INTEGER DEFAULT 1,
+            equipped INTEGER DEFAULT 0,
             acquired_at INTEGER DEFAULT (strftime('%s', 'now')),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
@@ -190,6 +202,8 @@ function initializeDatabase() {
     // Migrations
     const userTableInfo = db.prepare("PRAGMA table_info(users)").all();
     const questTableInfo = db.prepare("PRAGMA table_info(user_quests)").all();
+    const itemTableInfo = db.prepare("PRAGMA table_info(items)").all();
+    const userItemTableInfo = db.prepare("PRAGMA table_info(user_items)").all();
 
     // Migration: Add missing columns to users table
     const hasLastQuestTime = userTableInfo.some(col => col.name === 'last_quest_time');
@@ -236,7 +250,56 @@ function initializeDatabase() {
         console.log('Note: Default currency is now 0 for new users (existing users unaffected)');
     }
 
+    // Migration: Add PVP columns to users table
+    const pvpColumns = [
+        { name: 'pvp_enabled', type: 'INTEGER DEFAULT 0' },
+        { name: 'attack', type: 'INTEGER DEFAULT 10' },
+        { name: 'defense', type: 'INTEGER DEFAULT 10' },
+        { name: 'health', type: 'INTEGER DEFAULT 100' },
+        { name: 'max_health', type: 'INTEGER DEFAULT 100' },
+        { name: 'pvp_wins', type: 'INTEGER DEFAULT 0' },
+        { name: 'pvp_losses', type: 'INTEGER DEFAULT 0' }
+    ];
+
+    pvpColumns.forEach(column => {
+        const hasColumn = userTableInfo.some(col => col.name === column.name);
+        if (!hasColumn) {
+            console.log(`Running migration: Adding ${column.name} to users...`);
+            db.exec(`ALTER TABLE users ADD COLUMN ${column.name} ${column.type}`);
+            console.log(`Migration completed: ${column.name} added`);
+        }
+    });
+
+    // Migration: Add item stats columns
+    const itemColumns = [
+        { name: 'item_type', type: 'TEXT DEFAULT "misc"' },
+        { name: 'attack_power', type: 'INTEGER DEFAULT 0' },
+        { name: 'defense_power', type: 'INTEGER DEFAULT 0' },
+        { name: 'crit_chance', type: 'INTEGER DEFAULT 0' }
+    ];
+
+    itemColumns.forEach(column => {
+        const hasColumn = itemTableInfo.some(col => col.name === column.name);
+        if (!hasColumn) {
+            console.log(`Running migration: Adding ${column.name} to items...`);
+            db.exec(`ALTER TABLE items ADD COLUMN ${column.name} ${column.type}`);
+            console.log(`Migration completed: ${column.name} added`);
+        }
+    });
+
+    // Migration: Add equipped column to user_items
+    const hasEquipped = userItemTableInfo.some(col => col.name === 'equipped');
+    if (!hasEquipped) {
+        console.log('Running migration: Adding equipped to user_items...');
+        db.exec('ALTER TABLE user_items ADD COLUMN equipped INTEGER DEFAULT 0');
+        console.log('Migration completed: equipped added');
+    }
+
     console.log('Database initialized successfully');
+
+    // Seed items if this is first run
+    const { seedItems } = require('./seedItems');
+    seedItems();
 }
 
 module.exports = { db, initializeDatabase };

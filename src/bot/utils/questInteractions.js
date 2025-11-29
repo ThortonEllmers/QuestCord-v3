@@ -37,8 +37,28 @@ async function handleQuestAccept(interaction) {
     if (cooldownRemaining > 0) {
         const minutes = Math.floor(cooldownRemaining / 60);
         const seconds = Math.floor(cooldownRemaining % 60);
+        const timeString = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+        // Fun random cooldown messages
+        const cooldownMessages = [
+            `🐴 Your horse needs a break! Wait **${timeString}** before your next quest.`,
+            `🗺️ Still travelling back from your previous quest. Arrive in **${timeString}**.`,
+            `📋 The quest board is being updated. Check back in **${timeString}**.`,
+            `😴 You need to rest and recover! Try again in **${timeString}**.`,
+            `🎒 Your backpack is too heavy! Organize your gear for **${timeString}** more.`,
+            `🍺 The innkeeper says you look tired. Rest for **${timeString}** before your next adventure.`,
+            `💰 Still counting your loot from the last quest! Ready in **${timeString}**.`,
+            `🌙 Taking a short rest at the tavern. Back in action in **${timeString}**.`,
+            `⚔️ Sharpening your weapons and preparing. Ready in **${timeString}**.`,
+            `🧭 Charting your next route. Departure in **${timeString}**.`,
+            `🔥 Warming up by the campfire. Adventure continues in **${timeString}**.`,
+            `📖 Reading up on your next destination. Ready in **${timeString}**.`
+        ];
+
+        const randomMessage = cooldownMessages[Math.floor(Math.random() * cooldownMessages.length)];
+
         return interaction.reply({
-            content: `⏳ You must wait ${minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`} before accepting another quest.`,
+            content: randomMessage,
             ephemeral: true
         });
     }

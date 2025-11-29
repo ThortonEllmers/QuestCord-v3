@@ -121,6 +121,27 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('give-item')
+                .setDescription('Give an item/weapon to a user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to give the item to')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('item-name')
+                        .setDescription('The name of the item to give')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('quantity')
+                        .setDescription('Quantity to give (default: 1)')
+                        .setRequired(false)
+                        .setMinValue(1)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -166,6 +187,9 @@ module.exports = {
                 break;
             case 'reset-quests-user':
                 await handleResetQuestsUser(interaction, targetUser, user);
+                break;
+            case 'give-item':
+                await handleGiveItem(interaction, targetUser, user);
                 break;
         }
     }
@@ -603,6 +627,87 @@ async function handleResetQuestsUser(interaction, targetUser, user) {
         console.error('Error resetting user quests:', error);
         await interaction.reply({
             content: 'An error occurred while resetting user quests.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleGiveItem(interaction, targetUser, user) {
+    const itemName = interaction.options.getString('item-name');
+    const quantity = interaction.options.getInteger('quantity') || 1;
+
+    if (!user) {
+        UserModel.create(targetUser.id, targetUser.username);
+        user = UserModel.findByDiscordId(targetUser.id);
+    }
+
+    try {
+        // Find the item by name (case insensitive)
+        const item = db.prepare('SELECT * FROM items WHERE LOWER(item_name) = LOWER(?)').get(itemName);
+
+        if (!item) {
+            // Get all item names for suggestions
+            const allItems = db.prepare('SELECT item_name FROM items').all();
+            const itemList = allItems.map(i => i.item_name).join(', ');
+
+            return interaction.reply({
+                content: `Item "${itemName}" not found.\n\nAvailable items: ${itemList}`,
+                ephemeral: true
+            });
+        }
+
+        // Check if user already has this item
+        const existingItem = db.prepare('SELECT * FROM user_items WHERE user_id = ? AND item_id = ?').get(user.id, item.id);
+
+        if (existingItem) {
+            // Update quantity
+            db.prepare('UPDATE user_items SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?')
+                .run(quantity, user.id, item.id);
+        } else {
+            // Insert new item
+            db.prepare('INSERT INTO user_items (user_id, item_id, quantity) VALUES (?, ?, ?)')
+                .run(user.id, item.id, quantity);
+        }
+
+        const rarityEmoji = {
+            'common': '⚪',
+            'uncommon': '🟢',
+            'rare': '🔵',
+            'epic': '🟣',
+            'legendary': '🟠',
+            'mythic': '🔴'
+        }[item.rarity] || '⚪';
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('🎁 Item Given')
+            .setDescription(`**${quantity}x ${item.item_name}** has been given to ${targetUser.username}`)
+            .addFields(
+                {
+                    name: 'Item Details',
+                    value: `${rarityEmoji} **${item.rarity.toUpperCase()}** ${item.item_type}\n${item.description}`,
+                    inline: false
+                },
+                {
+                    name: 'Stats',
+                    value: `⚔️ Attack: ${item.attack_power}\n🛡️ Defense: ${item.defense_power}\n✨ Crit: ${item.crit_chance}%`,
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: interaction.user.username,
+                    inline: true
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        console.log(`[ADMIN] ${quantity}x ${item.item_name} given to ${targetUser.username} by ${interaction.user.username}`);
+    } catch (error) {
+        console.error('Error giving item:', error);
+        await interaction.reply({
+            content: 'An error occurred while giving the item.',
             ephemeral: true
         });
     }
