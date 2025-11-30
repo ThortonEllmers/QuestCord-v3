@@ -278,10 +278,47 @@
                         // Explode the card
                         this.classList.add('exploding');
 
-                        // Reset after animation
+                        // CHAOS MODE - Mess up the entire page!
                         setTimeout(() => {
-                            this.classList.remove('exploding');
-                        }, 600);
+                            document.body.classList.add('chaos-mode');
+
+                            // Get all major elements to throw around
+                            const chaosElements = document.querySelectorAll('.stat-card, .feature-card, .staff-card, .leaderboard-item, .faq-item, .btn, .hero-title, .section-title, .activity-item');
+
+                            chaosElements.forEach((element, index) => {
+                                // Random transformations
+                                const randomX = (Math.random() - 0.5) * 1000;
+                                const randomY = (Math.random() - 0.5) * 1000;
+                                const randomRotate = (Math.random() - 0.5) * 720;
+                                const randomScale = 0.5 + Math.random() * 1.5;
+
+                                element.style.transition = 'all 1s ease-out';
+                                element.style.transform = `translate(${randomX}px, ${randomY}px) rotate(${randomRotate}deg) scale(${randomScale})`;
+                                element.style.opacity = Math.random() * 0.5 + 0.5;
+                                element.style.zIndex = Math.floor(Math.random() * 1000);
+                            });
+
+                            // Mess up the hero section
+                            const hero = document.querySelector('.hero');
+                            if (hero) {
+                                hero.style.transition = 'all 1s ease-out';
+                                hero.style.transform = 'rotate(' + (Math.random() - 0.5) * 45 + 'deg) scale(0.8)';
+                            }
+
+                            // Spin some sections
+                            const sections = document.querySelectorAll('.stats-section, .about-section, .activity-section, .leaderboard-section');
+                            sections.forEach(section => {
+                                section.style.transition = 'all 1.5s ease-out';
+                                section.style.transform = 'rotate(' + (Math.random() - 0.5) * 360 + 'deg)';
+                            });
+
+                            // Reset everything after 10 seconds
+                            setTimeout(() => {
+                                // Reload the page for a clean reset
+                                location.reload();
+                            }, 10000);
+
+                        }, 600); // Start chaos right after card explosion
 
                     }, 500); // Wait for shake to finish
                 });
