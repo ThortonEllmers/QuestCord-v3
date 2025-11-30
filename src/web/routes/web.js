@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
         const staff = StaffModel.getAll();
 
         // Fetch peasants
-        const peasantIds = ['245784383506743296', '576244740199284779', '378501056008683530'];
+        const peasantIds = ['245784383506743296', '576244740199284779'];
         const peasants = [];
         const { getDiscordClient } = require('../server');
         const client = getDiscordClient();

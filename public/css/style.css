@@ -828,11 +828,11 @@ body > * {
 
 /* Insult Display */
 .insult-display {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 99999;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 99999 !important;
     max-width: 800px;
     width: 90%;
     padding: 40px;
@@ -843,10 +843,12 @@ body > * {
     opacity: 0;
     transition: opacity 0.5s ease;
     pointer-events: none;
+    display: block;
+    margin: 0;
 }
 
 .insult-display.visible {
-    opacity: 1;
+    opacity: 1 !important;
 }
 
 .insult-text {

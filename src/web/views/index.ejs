@@ -403,50 +403,61 @@
                 });
             }
 
-            // INSULT DISPLAY for user 378501056008683530
-            const insultCard = document.querySelector('.staff-card[data-user-id="378501056008683530"]');
-            if (insultCard) {
-                insultCard.style.cursor = 'pointer';
-                insultCard.addEventListener('click', async function() {
-                    if (document.querySelector('.insult-display')) return; // Prevent multiple insults
+            // INSULT DISPLAY for developer (works with staff section)
+            // Find the staff card by data-user-id attribute in the staff section
+            const developerCards = document.querySelectorAll('.staff-section .staff-card');
+            developerCards.forEach(card => {
+                const userId = card.getAttribute('data-user-id');
+                if (userId === '378501056008683530') {
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', async function() {
+                        if (document.querySelector('.insult-display')) return; // Prevent multiple insults
 
-                    try {
-                        // Fetch random insult from API
-                        const response = await fetch('/api/insult');
-                        const data = await response.json();
+                        try {
+                            // Fetch random insult from API
+                            const response = await fetch('/api/insult');
+                            const data = await response.json();
 
-                        // Transform text: odd letters lowercase, even letters uppercase
-                        let letterIndex = 0;
-                        const transformedText = data.insult.split('').map(char => {
-                            if (/[a-zA-Z]/.test(char)) {
-                                const result = letterIndex % 2 === 0 ? char.toLowerCase() : char.toUpperCase();
-                                letterIndex++;
-                                return result;
-                            }
-                            return char;
-                        }).join('');
+                            // Transform text: odd letters lowercase, even letters uppercase
+                            let letterIndex = 0;
+                            const transformedText = data.insult.split('').map(char => {
+                                if (/[a-zA-Z]/.test(char)) {
+                                    const result = letterIndex % 2 === 0 ? char.toLowerCase() : char.toUpperCase();
+                                    letterIndex++;
+                                    return result;
+                                }
+                                return char;
+                            }).join('');
 
-                        // Create insult display element
-                        const insultDisplay = document.createElement('div');
-                        insultDisplay.className = 'insult-display';
-                        insultDisplay.innerHTML = `
-                            <div class="insult-text">"${transformedText}"</div>
-                        `;
-                        document.body.appendChild(insultDisplay);
+                            // Create insult display element
+                            const insultDisplay = document.createElement('div');
+                            insultDisplay.className = 'insult-display';
+                            insultDisplay.style.cssText = `
+                                position: fixed !important;
+                                top: 50% !important;
+                                left: 50% !important;
+                                transform: translate(-50%, -50%) !important;
+                                z-index: 99999 !important;
+                            `;
+                            insultDisplay.innerHTML = `
+                                <div class="insult-text">"${transformedText}"</div>
+                            `;
+                            document.body.appendChild(insultDisplay);
 
-                        // Fade in
-                        setTimeout(() => insultDisplay.classList.add('visible'), 100);
+                            // Fade in
+                            setTimeout(() => insultDisplay.classList.add('visible'), 100);
 
-                        // Remove after 10 seconds
-                        setTimeout(() => {
-                            insultDisplay.classList.remove('visible');
-                            setTimeout(() => insultDisplay.remove(), 500);
-                        }, 10000);
-                    } catch (error) {
-                        console.error('Error displaying insult:', error);
-                    }
-                });
-            }
+                            // Remove after 10 seconds
+                            setTimeout(() => {
+                                insultDisplay.classList.remove('visible');
+                                setTimeout(() => insultDisplay.remove(), 500);
+                            }, 10000);
+                        } catch (error) {
+                            console.error('Error displaying insult:', error);
+                        }
+                    });
+                }
+            });
 
             // CRAZY PARTY MODE for CUB's card!
             const cubCards = document.querySelectorAll('.staff-card');
