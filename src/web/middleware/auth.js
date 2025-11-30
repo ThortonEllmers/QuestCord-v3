@@ -1,11 +1,28 @@
 const { StaffModel } = require('../../database/models');
 const config = require('../../../config.json');
 
+// Safe console logging to prevent EPIPE errors in background processes
+function safeLog(...args) {
+    try {
+        console.log(...args);
+    } catch (err) {
+        // Silently ignore EPIPE errors when stdout is unavailable
+    }
+}
+
+function safeError(...args) {
+    try {
+        console.error(...args);
+    } catch (err) {
+        // Silently ignore EPIPE errors when stderr is unavailable
+    }
+}
+
 async function updateStaffRoles(client, broadcastCallback) {
     try {
         const supportGuild = client.guilds.cache.get(config.supportServer.id);
         if (!supportGuild) {
-            console.log('Support server not found');
+            safeLog('Support server not found');
             return null;
         }
 
@@ -63,7 +80,7 @@ async function updateStaffRoles(client, broadcastCallback) {
         const currentStaff = StaffModel.getAll();
         for (const staff of currentStaff) {
             if (!validStaffIds.has(staff.discord_id)) {
-                console.log(`Removing ${staff.username} from staff (no longer has role)`);
+                safeLog(`Removing ${staff.username} from staff (no longer has role)`);
                 StaffModel.remove(staff.discord_id);
             }
         }
@@ -74,10 +91,10 @@ async function updateStaffRoles(client, broadcastCallback) {
             broadcastCallback(allStaff);
         }
 
-        console.log('Staff roles updated successfully');
+        safeLog('Staff roles updated successfully');
         return allStaff;
     } catch (error) {
-        console.error('Error updating staff roles:', error);
+        safeError('Error updating staff roles:', error);
         return null;
     }
 }

@@ -241,9 +241,10 @@ async function handleStats(interaction) {
         WHERE ui.user_id = ? AND i.item_type = 'armor' AND ui.equipped = 1
     `).get(user.id);
 
-    const totalAttack = user.attack + (equippedWeapon?.attack_power || 0);
+    // Calculate total stats from base + weapon + armor
+    const totalAttack = user.attack + (equippedWeapon?.attack_power || 0) + (equippedArmor?.attack_power || 0);
     const totalDefense = user.defense + (equippedWeapon?.defense_power || 0) + (equippedArmor?.defense_power || 0);
-    const totalCrit = equippedWeapon?.crit_chance || 0;
+    const totalCrit = (equippedWeapon?.crit_chance || 0) + (equippedArmor?.crit_chance || 0);
 
     const embed = new EmbedBuilder()
         .setColor(config.theme.colors.primary)
@@ -272,12 +273,16 @@ async function handleStats(interaction) {
             },
             {
                 name: 'Equipped Weapon',
-                value: equippedWeapon ? `${equippedWeapon.item_name}\n+${equippedWeapon.attack_power} ATK` : 'None',
+                value: equippedWeapon
+                    ? `${equippedWeapon.item_name}\n⚔️ +${equippedWeapon.attack_power} ATK | 🛡️ +${equippedWeapon.defense_power} DEF\n✨ +${equippedWeapon.crit_chance}% CRIT`
+                    : 'None',
                 inline: true
             },
             {
                 name: 'Equipped Armor',
-                value: equippedArmor ? `${equippedArmor.item_name}\n+${equippedArmor.defense_power} DEF` : 'None',
+                value: equippedArmor
+                    ? `${equippedArmor.item_name}\n⚔️ +${equippedArmor.attack_power} ATK | 🛡️ +${equippedArmor.defense_power} DEF\n✨ +${equippedArmor.crit_chance}% CRIT`
+                    : 'None',
                 inline: true
             }
         )

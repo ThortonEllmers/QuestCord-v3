@@ -175,45 +175,93 @@ const questTemplates = {
 const bossTemplates = [
     {
         type: 'dragon',
+        name: 'Inferno Drake',
+        health: 2000,
+        rewardCurrency: 50,
+        rewardGems: 2,
+        tier: 1,
+        rarity: 'Common',
+        biome: 'volcanic'
+    },
+    {
+        type: 'dragon',
         name: 'Ancient Fire Dragon',
         health: 10000,
         rewardCurrency: 100,
-        rewardGems: 5
+        rewardGems: 5,
+        tier: 3,
+        rarity: 'Epic',
+        biome: 'volcanic'
     },
     {
         type: 'giant',
         name: 'Stone Titan',
         health: 12000,
         rewardCurrency: 110,
-        rewardGems: 6
+        rewardGems: 6,
+        tier: 3,
+        rarity: 'Epic',
+        biome: 'mountain'
     },
     {
         type: 'demon',
         name: 'Shadow Demon Lord',
         health: 15000,
         rewardCurrency: 125,
-        rewardGems: 7
+        rewardGems: 7,
+        tier: 4,
+        rarity: 'Legendary',
+        biome: 'netherworld'
     },
     {
         type: 'hydra',
         name: 'Serpent Hydra',
         health: 13000,
         rewardCurrency: 115,
-        rewardGems: 6
+        rewardGems: 6,
+        tier: 3,
+        rarity: 'Epic',
+        biome: 'swamp'
     },
     {
         type: 'lich',
         name: 'Death Lord Lich',
         health: 11000,
         rewardCurrency: 105,
-        rewardGems: 5
+        rewardGems: 5,
+        tier: 3,
+        rarity: 'Rare',
+        biome: 'graveyard'
     },
     {
         type: 'kraken',
         name: 'Deep Sea Kraken',
         health: 14000,
         rewardCurrency: 120,
-        rewardGems: 6
+        rewardGems: 6,
+        tier: 3,
+        rarity: 'Epic',
+        biome: 'ocean'
+    },
+    {
+        type: 'wolf',
+        name: 'Dire Wolf',
+        health: 3000,
+        rewardCurrency: 60,
+        rewardGems: 2,
+        tier: 1,
+        rarity: 'Common',
+        biome: 'forest'
+    },
+    {
+        type: 'golem',
+        name: 'Ice Golem',
+        health: 5000,
+        rewardCurrency: 75,
+        rewardGems: 3,
+        tier: 2,
+        rarity: 'Rare',
+        biome: 'tundra'
     }
 ];
 

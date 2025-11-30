@@ -96,6 +96,16 @@ router.get('/makepeoplecry', (req, res) => {
     res.render('makepeoplecry');
 });
 
+// Terms of Service page
+router.get('/terms', (req, res) => {
+    res.render('terms');
+});
+
+// Privacy Policy page
+router.get('/privacy', (req, res) => {
+    res.render('privacy');
+});
+
 router.get('/', async (req, res) => {
     try {
         const stats = GlobalStatsModel.get();

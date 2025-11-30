@@ -897,6 +897,27 @@ body > * {
     color: #7c3aed;
 }
 
+.footer-legal-links {
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+.footer-legal-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-legal-link:hover {
+    color: rgba(255, 255, 255, 1);
+    text-decoration: underline;
+}
+
+.footer-separator {
+    margin: 0 10px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
 .empty-state {
     text-align: center;
     padding: 40px;

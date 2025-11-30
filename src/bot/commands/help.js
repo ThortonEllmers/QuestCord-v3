@@ -83,7 +83,7 @@ module.exports = {
                     .setLabel('Support Server')
                     .setStyle(ButtonStyle.Link)
                     .setEmoji('💬')
-                    .setURL('https://discord.gg/your-support-server'),
+                    .setURL('https://discord.gg/ACGKvKkZ5Z'),
                 new ButtonBuilder()
                     .setLabel('Website')
                     .setStyle(ButtonStyle.Link)

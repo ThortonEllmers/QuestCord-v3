@@ -52,12 +52,14 @@ class LevelSystem {
     }
 
     static getLevelRewards(level) {
-        const baseCurrency = 500;
-        const baseGems = 10;
+        // Base rewards that scale by 2% per level (compound growth)
+        const baseCurrency = 100;
+        const baseGems = 2;
+        const growthRate = 1.02; // 2% growth per level
 
         return {
-            currency: baseCurrency * level,
-            gems: baseGems + Math.floor(level / 5)
+            currency: Math.floor(baseCurrency * Math.pow(growthRate, level - 1)),
+            gems: Math.floor(baseGems * Math.pow(growthRate, level - 1))
         };
     }
 

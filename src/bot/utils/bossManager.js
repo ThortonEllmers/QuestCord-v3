@@ -1,5 +1,6 @@
 const { BossModel, ServerModel, GlobalStatsModel } = require('../../database/models');
 const { getRandomBoss } = require('./questData');
+const { EmbedBuilder } = require('discord.js');
 const config = require('../../../config.json');
 
 class BossManager {
@@ -73,7 +74,7 @@ class BossManager {
 
             console.log(`Boss spawned: ${bossTemplate.name} in server ${randomServer.name}`);
 
-            this.announceBossSpawn(randomServer.discord_id, bossTemplate.name, result.lastInsertRowid);
+            this.announceBossSpawn(randomServer, bossTemplate, result.lastInsertRowid);
 
             setTimeout(() => this.scheduleNextBoss(), config.boss.spawnDuration + config.boss.cooldownDuration);
         } catch (error) {
@@ -82,22 +83,75 @@ class BossManager {
         }
     }
 
-    static async announceBossSpawn(serverId, bossName, bossId) {
+    static async announceBossSpawn(server, bossTemplate, bossId) {
         try {
-            const guild = this.client.guilds.cache.get(serverId);
+            // Specific announcement channel
+            const ANNOUNCEMENT_CHANNEL_ID = '1411045103921004554';
+            const BOSS_ROLE_ID = '1411051374153826386';
+
+            const announcementChannel = this.client.channels.cache.get(ANNOUNCEMENT_CHANNEL_ID);
+            if (!announcementChannel) {
+                console.error('Boss announcement channel not found');
+                return;
+            }
+
+            const guild = this.client.guilds.cache.get(server.discord_id);
             if (!guild) return;
 
-            const channel = guild.channels.cache.find(ch =>
-                ch.name.includes('general') ||
-                ch.name.includes('quest') ||
-                ch.name.includes('announcements')
-            );
+            // Get server icon
+            const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-            if (channel && channel.isTextBased()) {
-                await channel.send({
-                    content: `**A wild boss has appeared!**\n\n**${bossName}** has spawned in this server!\nUse \`/attack\` to join the fight!\n\nBoss will despawn in 60 minutes if not defeated.`
-                });
-            }
+            // Calculate time remaining (60 minutes)
+            const minutesRemaining = Math.floor(config.boss.spawnDuration / 60000);
+
+            // Create embed
+            const embed = new EmbedBuilder()
+                .setColor('#FF6B35')
+                .setTitle(`🔥 NEW BOSS ALERT 🔥`)
+                .setDescription(`⚔️ **${bossTemplate.name} has spawned!**\nA Tier ${bossTemplate.tier} ${bossTemplate.rarity} boss has emerged and threatens the realm!`)
+                .addFields(
+                    {
+                        name: '💀 Boss Info',
+                        value: `**HP:** ${bossTemplate.health.toLocaleString()}\n**Type:** ${bossTemplate.rarity} (Tier ${bossTemplate.tier})\n**Biome:** ${bossTemplate.biome}`,
+                        inline: false
+                    },
+                    {
+                        name: '📍 Location',
+                        value: `**${server.name}**`,
+                        inline: true
+                    },
+                    {
+                        name: '🌐 Visit Website',
+                        value: '[questcord.fun](https://questcord.fun)',
+                        inline: true
+                    },
+                    {
+                        name: '⏰ Time Left',
+                        value: `${minutesRemaining}m`,
+                        inline: true
+                    },
+                    {
+                        name: '⚔️ How to Fight',
+                        value: `• Join the server where the boss spawned\n• Use \`/boss attack\` to deal damage\n• Work together with other players!\n• Defeat it for valuable rewards`,
+                        inline: false
+                    },
+                    {
+                        name: '🚀 How to Travel',
+                        value: `Use \`/travel\` command in any QuestCord server to see available destinations and travel to **${server.name}**!`,
+                        inline: false
+                    }
+                )
+                .setThumbnail(serverIcon)
+                .setFooter({ text: `Boss spawned on server • ${server.name}` })
+                .setTimestamp();
+
+            // Send announcement with role ping
+            await announcementChannel.send({
+                content: `<@&${BOSS_ROLE_ID}>`,
+                embeds: [embed]
+            });
+
+            console.log(`Boss announcement sent to channel ${ANNOUNCEMENT_CHANNEL_ID}`);
         } catch (error) {
             console.error('Error announcing boss spawn:', error);
         }

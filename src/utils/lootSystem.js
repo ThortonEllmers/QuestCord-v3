@@ -1,4 +1,5 @@
 const { ItemModel, UserItemModel } = require('../database/models');
+const { autoEquipItem } = require('./equipmentHelper');
 
 const LOOT_TABLES = {
     quest_easy: {
@@ -231,33 +232,11 @@ class LootSystem {
                 return item;
             }
 
-            // Check if should auto-equip (if no item equipped or this item is better)
-            let shouldEquip = false;
+            // Give item to user
+            db.prepare('INSERT INTO user_items (user_id, item_id, quantity, equipped) VALUES (?, ?, 1, 0)').run(userId, item.id);
 
-            const equippedItem = db.prepare(`
-                SELECT ui.*, i.*
-                FROM user_items ui
-                JOIN items i ON ui.item_id = i.id
-                WHERE ui.user_id = ? AND i.item_type = ? AND ui.equipped = 1
-            `).get(userId, item.item_type);
-
-            if (!equippedItem) {
-                // No item equipped in this slot, auto-equip
-                shouldEquip = true;
-            } else {
-                // Compare stats - new item is better if it has higher total power
-                const currentPower = equippedItem.attack_power + equippedItem.defense_power + (equippedItem.crit_chance / 2);
-                const newPower = item.attack_power + item.defense_power + (item.crit_chance / 2);
-
-                if (newPower > currentPower) {
-                    // Unequip old item
-                    db.prepare('UPDATE user_items SET equipped = 0 WHERE user_id = ? AND item_id = ?').run(userId, equippedItem.item_id);
-                    shouldEquip = true;
-                }
-            }
-
-            // Give item to user with proper equipped status
-            db.prepare('INSERT INTO user_items (user_id, item_id, quantity, equipped) VALUES (?, ?, 1, ?)').run(userId, item.id, shouldEquip ? 1 : 0);
+            // Try to auto-equip if it's better than current equipment
+            autoEquipItem(userId, item);
         }
 
         return item;

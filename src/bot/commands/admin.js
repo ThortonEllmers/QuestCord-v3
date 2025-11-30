@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel } = require('../../database/models');
 const { isStaff, isDeveloper } = require('../utils/permissions');
 const { LevelSystem } = require('../../utils/levelSystem');
+const { autoEquipItem } = require('../../utils/equipmentHelper');
 const config = require('../../../config.json');
 const { db } = require('../../database/schema');
 
@@ -811,14 +812,21 @@ async function handleGiveItem(interaction, targetUser, user) {
         // Check if user already has this item
         const existingItem = db.prepare('SELECT * FROM user_items WHERE user_id = ? AND item_id = ?').get(user.id, item.id);
 
+        let wasEquipped = false;
+
         if (existingItem) {
             // Update quantity
             db.prepare('UPDATE user_items SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?')
                 .run(quantity, user.id, item.id);
         } else {
-            // Insert new item
-            db.prepare('INSERT INTO user_items (user_id, item_id, quantity) VALUES (?, ?, ?)')
+            // Insert new item with equipped = 0 by default
+            db.prepare('INSERT INTO user_items (user_id, item_id, quantity, equipped) VALUES (?, ?, ?, 0)')
                 .run(user.id, item.id, quantity);
+
+            // Try to auto-equip if it's better than current equipment
+            wasEquipped = autoEquipItem(user.id, item);
+
+            console.log(`[AUTO-EQUIP] Item ${item.item_name} (ID: ${item.id}) for user ${user.id} - Equipped: ${wasEquipped}`);
         }
 
         const rarityEmoji = {
@@ -833,7 +841,7 @@ async function handleGiveItem(interaction, targetUser, user) {
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.success)
             .setTitle('🎁 Item Given')
-            .setDescription(`**${quantity}x ${item.item_name}** has been given to ${targetUser.username}`)
+            .setDescription(`**${quantity}x ${item.item_name}** has been given to ${targetUser.username}${wasEquipped ? '\n\n✅ **Auto-equipped** - This item is better than their current equipment!' : ''}`)
             .addFields(
                 {
                     name: 'Item Details',
