@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <!-- Scroll Path Line -->
-    <div class="scroll-path-container" id="scrollPathContainer"></div>
+    <!-- Scroll Path Line (disabled) -->
+    <!-- <div class="scroll-path-container" id="scrollPathContainer"></div> -->
 
     <div class="hero">
         <div class="container">
@@ -404,84 +404,9 @@
                 }
             });
 
-            // Zigzag scroll path
-            const pathContainer = document.getElementById('scrollPathContainer');
-            if (pathContainer) {
-                let currentSide = 'left';
-                let currentTop = 0;
-                const segmentHeight = 300;
-                const segments = [];
-
-                function createPathSegment() {
-                    const segment = document.createElement('div');
-                    segment.className = 'scroll-path';
-
-                    const startX = currentSide === 'left' ? 50 : window.innerWidth - 50;
-                    const endX = currentSide === 'left' ? window.innerWidth - 50 : 50;
-
-                    segment.style.left = startX + 'px';
-                    segment.style.top = currentTop + 'px';
-                    segment.style.height = '0px';
-                    segment.style.transformOrigin = 'top left';
-
-                    const angle = Math.atan2(segmentHeight, endX - startX) * (180 / Math.PI);
-                    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(segmentHeight, 2));
-
-                    segment.style.width = '4px';
-                    segment.style.transform = `rotate(${angle}deg)`;
-
-                    pathContainer.appendChild(segment);
-                    segments.push({ element: segment, maxLength: length, startX, endX });
-
-                    currentTop += segmentHeight;
-                    currentSide = currentSide === 'left' ? 'right' : 'left';
-                }
-
-                // Create enough segments to cover the page
-                const pageHeight = document.documentElement.scrollHeight;
-                const numSegments = Math.ceil(pageHeight / segmentHeight) + 2;
-                for (let i = 0; i < numSegments; i++) {
-                    createPathSegment();
-                }
-
-                // Add marker X
-                const marker = document.createElement('div');
-                marker.className = 'scroll-marker';
-                marker.textContent = 'X';
-                pathContainer.appendChild(marker);
-
-                // Update on scroll
-                window.addEventListener('scroll', () => {
-                    const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-                    const scrollPos = window.scrollY;
-
-                    segments.forEach((seg, index) => {
-                        const segmentStart = index * segmentHeight;
-                        const segmentEnd = (index + 1) * segmentHeight;
-
-                        if (scrollPos > segmentEnd) {
-                            seg.element.style.height = seg.maxLength + 'px';
-                        } else if (scrollPos > segmentStart) {
-                            const progress = (scrollPos - segmentStart) / segmentHeight;
-                            seg.element.style.height = (seg.maxLength * progress) + 'px';
-                        } else {
-                            seg.element.style.height = '0px';
-                        }
-                    });
-
-                    // Update marker position
-                    const currentSegmentIndex = Math.floor(scrollPos / segmentHeight);
-                    if (segments[currentSegmentIndex]) {
-                        const seg = segments[currentSegmentIndex];
-                        const progress = (scrollPos % segmentHeight) / segmentHeight;
-                        const markerX = seg.startX + (seg.endX - seg.startX) * progress;
-                        const markerY = scrollPos;
-
-                        marker.style.left = markerX + 'px';
-                        marker.style.top = markerY + 'px';
-                    }
-                });
-            }
+            // Zigzag scroll path (disabled for better UX)
+            // The scroll path feature has been disabled to improve scrolling performance
+            // and remove the distracting X marker
         });
     </script>
 
