@@ -200,11 +200,14 @@
             <h2 class="section-title">Peasants</h2>
             <div class="staff-grid">
                 <% peasants.forEach(member => { %>
-                    <div class="staff-card">
+                    <div class="staff-card <%= member.discord_id === '245784383506743296' ? 'npc-card' : '' %>" data-user-id="<%= member.discord_id %>">
                         <% if (member.avatar_url) { %>
                             <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
                         <% } %>
                         <div class="staff-name"><%= member.username %></div>
+                        <% if (member.discord_id === '245784383506743296') { %>
+                            <div class="staff-role npc-badge">preprogrammed npc</div>
+                        <% } %>
                     </div>
                 <% }); %>
             </div>
@@ -229,6 +232,61 @@
             // Scroll to top smoothly
             window.scrollTo({ top: 0, behavior: 'instant' });
         })();
+
+        // NPC Card explosion effect
+        document.addEventListener('DOMContentLoaded', function() {
+            const npcCard = document.querySelector('.npc-card[data-user-id="245784383506743296"]');
+
+            if (npcCard) {
+                npcCard.addEventListener('click', function(e) {
+                    // Prevent multiple clicks during animation
+                    if (this.classList.contains('exploding')) return;
+
+                    // Shake animation first
+                    this.classList.add('shaking');
+
+                    setTimeout(() => {
+                        this.classList.remove('shaking');
+
+                        // Create explosion particles
+                        const rect = this.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+
+                        // Create 20 particles
+                        for (let i = 0; i < 20; i++) {
+                            const particle = document.createElement('div');
+                            particle.className = 'explosion-particle';
+
+                            // Random direction
+                            const angle = (Math.PI * 2 * i) / 20;
+                            const velocity = 100 + Math.random() * 100;
+                            const tx = Math.cos(angle) * velocity;
+                            const ty = Math.sin(angle) * velocity;
+
+                            particle.style.left = rect.left + rect.width / 2 + 'px';
+                            particle.style.top = rect.top + rect.height / 2 + 'px';
+                            particle.style.setProperty('--tx', tx + 'px');
+                            particle.style.setProperty('--ty', ty + 'px');
+
+                            document.body.appendChild(particle);
+
+                            // Remove particle after animation
+                            setTimeout(() => particle.remove(), 800);
+                        }
+
+                        // Explode the card
+                        this.classList.add('exploding');
+
+                        // Reset after animation
+                        setTimeout(() => {
+                            this.classList.remove('exploding');
+                        }, 600);
+
+                    }, 500); // Wait for shake to finish
+                });
+            }
+        });
     </script>
     <script src="/js/activity.js"></script>
 </body>
