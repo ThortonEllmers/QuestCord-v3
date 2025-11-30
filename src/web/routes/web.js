@@ -51,10 +51,35 @@ router.get('/', async (req, res) => {
         const topPlayers = LeaderboardModel.getTopPlayers(now.getMonth() + 1, now.getFullYear(), 10);
         const staff = StaffModel.getAll();
 
+        // Fetch peasants
+        const peasantIds = ['245784383506743296'];
+        const peasants = [];
+        const { getDiscordClient } = require('../server');
+        const client = getDiscordClient();
+
+        if (client) {
+            for (const userId of peasantIds) {
+                try {
+                    const user = await client.users.fetch(userId);
+                    if (user) {
+                        peasants.push({
+                            discord_id: userId,
+                            username: user.globalName || user.username,
+                            avatar_url: user.displayAvatarURL({ size: 128, extension: 'png' }),
+                            role: 'Peasant'
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error fetching peasant user ${userId}:`, error);
+                }
+            }
+        }
+
         res.render('index', {
             stats: enhancedStats,
             topPlayers,
             staff,
+            peasants,
             config
         });
     } catch (error) {

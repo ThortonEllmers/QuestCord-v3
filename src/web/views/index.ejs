@@ -194,6 +194,25 @@
     </div>
     <% } %>
 
+    <% if (peasants && peasants.length > 0) { %>
+    <div class="staff-section peasants-section">
+        <div class="container">
+            <h2 class="section-title">Peasants</h2>
+            <div class="staff-grid">
+                <% peasants.forEach(member => { %>
+                    <div class="staff-card">
+                        <% if (member.avatar_url) { %>
+                            <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
+                        <% } %>
+                        <div class="staff-name"><%= member.username %></div>
+                        <div class="staff-role peasant"><%= member.role %></div>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
     <%- include('partials/footer') %>
 
     <script>
