@@ -195,7 +195,7 @@
     <% } %>
 
     <% if (peasants && peasants.length > 0) { %>
-    <div class="staff-section peasants-section">
+    <div class="staff-section">
         <div class="container">
             <h2 class="section-title">Peasants</h2>
             <div class="staff-grid">
@@ -205,7 +205,6 @@
                             <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
                         <% } %>
                         <div class="staff-name"><%= member.username %></div>
-                        <div class="staff-role peasant"><%= member.role %></div>
                     </div>
                 <% }); %>
             </div>
