@@ -210,6 +210,19 @@
 
         // If they actually click it (somehow)
         button.addEventListener('click', async () => {
+            // Detect device type
+            function getDeviceType() {
+                const ua = navigator.userAgent.toLowerCase();
+                const isTablet = /(ipad|tablet|playbook|silk)|(android(?!.*mobile))/i.test(ua);
+                const isMobile = /mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua);
+
+                if (isTablet) return 'tablet';
+                if (isMobile) return 'mobile';
+                return 'PC';
+            }
+
+            const deviceType = getDeviceType();
+
             // Request fullscreen
             try {
                 if (document.documentElement.requestFullscreen) {
@@ -268,13 +281,13 @@
                         font-size: 18px;
                         font-weight: 300;
                         margin: 0;
-                    ">Don't turn off your PC. This will take a while.</p>
+                    ">Don't turn off your ${deviceType}. This will take a while.</p>
                     <p style="
                         font-size: 16px;
                         font-weight: 300;
                         margin: 20px 0 0 0;
                         opacity: 0.8;
-                    ">Your PC will restart several times.</p>
+                    ">Your ${deviceType} will restart several times.</p>
                 </div>
             `;
 
