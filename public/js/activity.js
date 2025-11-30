@@ -153,6 +153,9 @@ function escapeHtml(text) {
 }
 
 function formatLargeNumber(num) {
+    if (num === undefined || num === null) {
+        return '0';
+    }
     if (num >= 1e15) {
         return (num / 1e15).toFixed(1).replace(/\.0$/, '') + 'Q';
     }

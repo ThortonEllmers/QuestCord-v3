@@ -6,6 +6,7 @@ const { handleShopPurchase, handleShopCancel } = require('../utils/shopInteracti
 const { handlePvpAccept, handlePvpDecline, handlePvpAttack } = require('../utils/pvpArena');
 const { isStaff } = require('../utils/permissions');
 const { db } = require('../../database/schema');
+const { MessageFlags } = require('discord.js');
 
 module.exports = {
     name: 'interactionCreate',
@@ -52,7 +53,7 @@ module.exports = {
                 if (interaction.customId === 'help_tutorial') {
                     const tutorialCommand = interaction.client.commands.get('tutorial');
                     if (tutorialCommand) {
-                        await interaction.deferReply({ ephemeral: true });
+                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                         // Execute the command and capture its response
                         try {
                             // Temporarily override reply to use followUp
@@ -63,7 +64,7 @@ module.exports = {
                             await tutorialCommand.execute(interaction);
                             interaction.reply = originalReply;
                         } catch (err) {
-                            await interaction.editReply({ content: 'Failed to load tutorial.', ephemeral: true });
+                            await interaction.editReply({ content: 'Failed to load tutorial.', flags: MessageFlags.Ephemeral });
                         }
                     }
                     return;
@@ -71,7 +72,7 @@ module.exports = {
                 if (interaction.customId === 'help_quests') {
                     const questsCommand = interaction.client.commands.get('quests');
                     if (questsCommand) {
-                        await interaction.deferReply({ ephemeral: true });
+                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                         try {
                             const originalReply = interaction.reply;
                             interaction.reply = async (options) => {
@@ -80,7 +81,7 @@ module.exports = {
                             await questsCommand.execute(interaction);
                             interaction.reply = originalReply;
                         } catch (err) {
-                            await interaction.editReply({ content: 'Failed to load quests.', ephemeral: true });
+                            await interaction.editReply({ content: 'Failed to load quests.', flags: MessageFlags.Ephemeral });
                         }
                     }
                     return;
@@ -90,7 +91,7 @@ module.exports = {
                     const config = require('../../../config.json');
                     const { EmbedBuilder } = require('discord.js');
 
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                     try {
                         const targetUser = interaction.user;
                         let user = UserModel.findByDiscordId(targetUser.id);
@@ -148,7 +149,7 @@ module.exports = {
                         await interaction.editReply({ embeds: [embed] });
                     } catch (err) {
                         console.error('Error loading profile:', err);
-                        await interaction.editReply({ content: 'Failed to load profile.', ephemeral: true });
+                        await interaction.editReply({ content: 'Failed to load profile.', flags: MessageFlags.Ephemeral });
                     }
                     return;
                 }
@@ -162,7 +163,7 @@ module.exports = {
                 if (!interaction.replied && !interaction.deferred) {
                     await interaction.reply({
                         content: 'An error occurred while processing your action.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
             }
@@ -199,7 +200,7 @@ module.exports = {
         if (disabledCommand) {
             return interaction.reply({
                 content: `❌ The **/${interaction.commandName}** command is currently disabled.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -213,7 +214,7 @@ module.exports = {
             if (!userIsStaff && !userIsWhitelisted) {
                 return interaction.reply({
                     content: `❌ You don't have permission to use **/${interaction.commandName}**.`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
         }
@@ -269,7 +270,7 @@ module.exports = {
 
             const errorMessage = {
                 content: 'An error occurred while executing this command.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             };
 
             if (interaction.replied || interaction.deferred) {
