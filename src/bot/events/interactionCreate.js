@@ -86,7 +86,7 @@ module.exports = {
                     return;
                 }
                 if (interaction.customId === 'help_profile') {
-                    const { LevelSystem } = require('../utils/levelSystem');
+                    const { LevelSystem } = require('../../utils/levelSystem');
                     const config = require('../../../config.json');
                     const { EmbedBuilder } = require('discord.js');
 

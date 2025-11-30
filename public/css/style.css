@@ -819,6 +819,49 @@ body > * {
     animation: particle-burst 0.8s ease-out forwards;
 }
 
+/* Scroll Path Line */
+.scroll-path-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.scroll-path {
+    position: absolute;
+    width: 4px;
+    background: repeating-linear-gradient(
+        to bottom,
+        #ffeb3b 0px,
+        #ffeb3b 10px,
+        transparent 10px,
+        transparent 20px
+    );
+    transition: height 0.1s linear;
+}
+
+.scroll-marker {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    color: #ff0000;
+    font-size: 30px;
+    font-weight: bold;
+    line-height: 30px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.2); }
+}
+
 .footer {
     background: rgba(0, 0, 0, 0.3);
     padding: 40px 20px;

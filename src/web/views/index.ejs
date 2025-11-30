@@ -9,12 +9,16 @@
     <meta name="theme-color" content="#5865f2">
     <title>QuestCord - Quest Across Discord</title>
     <meta name="description" content="Complete quests, defeat bosses, and climb the global leaderboard in this immersive Discord RPG experience">
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <!-- Scroll Path Line -->
+    <div class="scroll-path-container" id="scrollPathContainer"></div>
+
     <div class="hero">
         <div class="container">
             <div class="hero-title-container">
@@ -323,8 +327,228 @@
                     }, 500); // Wait for shake to finish
                 });
             }
+
+            // CRAZY PARTY MODE for CUB's card!
+            const cubCards = document.querySelectorAll('.staff-card');
+            cubCards.forEach(card => {
+                const username = card.querySelector('.staff-name');
+                if (username && username.textContent.trim().toLowerCase() === 'cub') {
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', function() {
+                        if (document.body.classList.contains('party-mode')) return;
+
+                        // ACTIVATE PARTY MODE!!!
+                        document.body.classList.add('party-mode');
+
+                        // Change background to rainbow disco
+                        document.body.style.animation = 'rainbow-bg 0.5s linear infinite';
+
+                        // Get ALL elements
+                        const allElements = document.querySelectorAll('*:not(script):not(style)');
+
+                        allElements.forEach((el, i) => {
+                            setTimeout(() => {
+                                el.style.animation = 'party-spin 1s ease-in-out infinite, party-bounce 0.5s ease-in-out infinite';
+                                el.style.filter = `hue-rotate(${Math.random() * 360}deg) saturate(3)`;
+                            }, i * 2);
+                        });
+
+                        // Spawn confetti everywhere
+                        for (let i = 0; i < 200; i++) {
+                            setTimeout(() => {
+                                const confetti = document.createElement('div');
+                                confetti.className = 'confetti';
+                                confetti.style.left = Math.random() * 100 + 'vw';
+                                confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                                confetti.style.animationDelay = Math.random() * 2 + 's';
+                                document.body.appendChild(confetti);
+                                setTimeout(() => confetti.remove(), 5000);
+                            }, i * 20);
+                        }
+
+                        // Make everything grow and shrink randomly
+                        const cards = document.querySelectorAll('.stat-card, .feature-card, .staff-card, .faq-item, .leaderboard-item');
+                        cards.forEach(card => {
+                            card.style.animation = 'mega-bounce 0.3s ease-in-out infinite, rainbow-border 1s linear infinite';
+                        });
+
+                        // Spin the entire page
+                        const sections = document.querySelectorAll('.hero, .stats-section, .about-section, .activity-section, .leaderboard-section, .faq-section, .staff-section');
+                        sections.forEach(section => {
+                            section.style.animation = 'party-wobble 0.5s ease-in-out infinite';
+                        });
+
+                        // Add party text
+                        const partyText = document.createElement('div');
+                        partyText.innerHTML = '🎉 PARTY MODE ACTIVATED! 🎊';
+                        partyText.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            font-size: 60px;
+                            font-weight: bold;
+                            z-index: 99999;
+                            color: white;
+                            text-shadow: 0 0 20px #ff00ff, 0 0 40px #00ffff;
+                            animation: party-pulse 0.5s ease-in-out infinite;
+                            pointer-events: none;
+                        `;
+                        document.body.appendChild(partyText);
+
+                        // Reset after 10 seconds
+                        setTimeout(() => {
+                            location.reload();
+                        }, 10000);
+                    });
+                }
+            });
+
+            // Zigzag scroll path
+            const pathContainer = document.getElementById('scrollPathContainer');
+            if (pathContainer) {
+                let currentSide = 'left';
+                let currentTop = 0;
+                const segmentHeight = 300;
+                const segments = [];
+
+                function createPathSegment() {
+                    const segment = document.createElement('div');
+                    segment.className = 'scroll-path';
+
+                    const startX = currentSide === 'left' ? 50 : window.innerWidth - 50;
+                    const endX = currentSide === 'left' ? window.innerWidth - 50 : 50;
+
+                    segment.style.left = startX + 'px';
+                    segment.style.top = currentTop + 'px';
+                    segment.style.height = '0px';
+                    segment.style.transformOrigin = 'top left';
+
+                    const angle = Math.atan2(segmentHeight, endX - startX) * (180 / Math.PI);
+                    const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(segmentHeight, 2));
+
+                    segment.style.width = '4px';
+                    segment.style.transform = `rotate(${angle}deg)`;
+
+                    pathContainer.appendChild(segment);
+                    segments.push({ element: segment, maxLength: length, startX, endX });
+
+                    currentTop += segmentHeight;
+                    currentSide = currentSide === 'left' ? 'right' : 'left';
+                }
+
+                // Create enough segments to cover the page
+                const pageHeight = document.documentElement.scrollHeight;
+                const numSegments = Math.ceil(pageHeight / segmentHeight) + 2;
+                for (let i = 0; i < numSegments; i++) {
+                    createPathSegment();
+                }
+
+                // Add marker X
+                const marker = document.createElement('div');
+                marker.className = 'scroll-marker';
+                marker.textContent = 'X';
+                pathContainer.appendChild(marker);
+
+                // Update on scroll
+                window.addEventListener('scroll', () => {
+                    const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+                    const scrollPos = window.scrollY;
+
+                    segments.forEach((seg, index) => {
+                        const segmentStart = index * segmentHeight;
+                        const segmentEnd = (index + 1) * segmentHeight;
+
+                        if (scrollPos > segmentEnd) {
+                            seg.element.style.height = seg.maxLength + 'px';
+                        } else if (scrollPos > segmentStart) {
+                            const progress = (scrollPos - segmentStart) / segmentHeight;
+                            seg.element.style.height = (seg.maxLength * progress) + 'px';
+                        } else {
+                            seg.element.style.height = '0px';
+                        }
+                    });
+
+                    // Update marker position
+                    const currentSegmentIndex = Math.floor(scrollPos / segmentHeight);
+                    if (segments[currentSegmentIndex]) {
+                        const seg = segments[currentSegmentIndex];
+                        const progress = (scrollPos % segmentHeight) / segmentHeight;
+                        const markerX = seg.startX + (seg.endX - seg.startX) * progress;
+                        const markerY = scrollPos;
+
+                        marker.style.left = markerX + 'px';
+                        marker.style.top = markerY + 'px';
+                    }
+                });
+            }
         });
     </script>
+
+    <!-- Party Mode CSS -->
+    <style>
+        @keyframes rainbow-bg {
+            0% { background: #ff0000; }
+            16.67% { background: #ff7f00; }
+            33.33% { background: #ffff00; }
+            50% { background: #00ff00; }
+            66.67% { background: #0000ff; }
+            83.33% { background: #8b00ff; }
+            100% { background: #ff0000; }
+        }
+
+        @keyframes party-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes party-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes mega-bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
+        @keyframes rainbow-border {
+            0% { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+            16.67% { border-color: #ff7f00; box-shadow: 0 0 20px #ff7f00; }
+            33.33% { border-color: #ffff00; box-shadow: 0 0 20px #ffff00; }
+            50% { border-color: #00ff00; box-shadow: 0 0 20px #00ff00; }
+            66.67% { border-color: #0000ff; box-shadow: 0 0 20px #0000ff; }
+            83.33% { border-color: #8b00ff; box-shadow: 0 0 20px #8b00ff; }
+            100% { border-color: #ff0000; box-shadow: 0 0 20px #ff0000; }
+        }
+
+        @keyframes party-wobble {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(5deg); }
+            75% { transform: rotate(-5deg); }
+        }
+
+        @keyframes party-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            z-index: 9999;
+            animation: confetti-fall 5s linear;
+        }
+
+        @keyframes confetti-fall {
+            to {
+                transform: translateY(100vh) rotate(720deg);
+            }
+        }
+    </style>
+
     <script src="/js/activity.js"></script>
 </body>
 </html>

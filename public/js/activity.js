@@ -178,11 +178,11 @@ function updateStats(stats) {
     const currencyStat = document.querySelector('.stat-card:nth-child(4) .stat-value');
     const gemsStat = document.querySelector('.stat-card:nth-child(5) .stat-value');
 
-    if (serverStat) serverStat.textContent = stats.totalServers.toLocaleString();
-    if (userStat) userStat.textContent = stats.totalUsers.toLocaleString();
-    if (questStat) questStat.textContent = stats.totalQuestsCompleted.toLocaleString();
-    if (currencyStat) currencyStat.textContent = formatLargeNumber(stats.totalCurrency);
-    if (gemsStat) gemsStat.textContent = formatLargeNumber(stats.totalGems);
+    if (serverStat && stats.totalServers !== undefined) serverStat.textContent = stats.totalServers.toLocaleString();
+    if (userStat && stats.totalUsers !== undefined) userStat.textContent = stats.totalUsers.toLocaleString();
+    if (questStat && stats.totalQuestsCompleted !== undefined) questStat.textContent = stats.totalQuestsCompleted.toLocaleString();
+    if (currencyStat && stats.totalCurrency !== undefined) currencyStat.textContent = formatLargeNumber(stats.totalCurrency);
+    if (gemsStat && stats.totalGems !== undefined) gemsStat.textContent = formatLargeNumber(stats.totalGems);
 }
 
 function updateLeaderboard(players) {
