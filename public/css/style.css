@@ -757,6 +757,13 @@ body > * {
     font-weight: 700;
 }
 
+.staff-role.npc-badge-red {
+    background: #ff0000;
+    color: #000000;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 @keyframes rainbow-shift {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
@@ -817,6 +824,50 @@ body > * {
     border-radius: 50%;
     pointer-events: none;
     animation: particle-burst 0.8s ease-out forwards;
+}
+
+/* Insult Display */
+.insult-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99999;
+    max-width: 800px;
+    width: 90%;
+    padding: 40px;
+    background: linear-gradient(135deg, rgba(88, 101, 242, 0.95) 0%, rgba(124, 58, 237, 0.95) 100%);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(88, 101, 242, 0.3);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.insult-display.visible {
+    opacity: 1;
+}
+
+.insult-text {
+    font-size: 28px;
+    font-weight: 900;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.6;
+    font-style: normal;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    .insult-display {
+        padding: 30px;
+        max-width: 90%;
+    }
+
+    .insult-text {
+        font-size: 20px;
+    }
 }
 
 .footer {

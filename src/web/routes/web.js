@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { GlobalStatsModel, LeaderboardModel, StaffModel } = require('../../database/models');
 const config = require('../../../config.json');
+const insults = require('../../../config/insults.json');
 
 // Helper function to format large numbers with abbreviations
 function formatLargeNumber(num) {
@@ -32,6 +33,17 @@ router.get('/health', (req, res) => {
     });
 });
 
+// Random insult endpoint
+router.get('/api/insult', (req, res) => {
+    try {
+        const randomInsult = insults.insults[Math.floor(Math.random() * insults.insults.length)];
+        res.json({ insult: randomInsult });
+    } catch (error) {
+        console.error('Error fetching insult:', error);
+        res.status(500).json({ error: 'Failed to fetch insult' });
+    }
+});
+
 router.get('/', async (req, res) => {
     try {
         const stats = GlobalStatsModel.get();
@@ -52,7 +64,7 @@ router.get('/', async (req, res) => {
         const staff = StaffModel.getAll();
 
         // Fetch peasants
-        const peasantIds = ['245784383506743296', '576244740199284779'];
+        const peasantIds = ['245784383506743296', '576244740199284779', '378501056008683530'];
         const peasants = [];
         const { getDiscordClient } = require('../server');
         const client = getDiscordClient();
