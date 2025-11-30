@@ -408,28 +408,39 @@
             const developerCards = document.querySelectorAll('.staff-section .staff-card');
             let isInsultLoading = false;
             let lastInsultTime = 0;
-            const INSULT_COOLDOWN = 1000; // 1 second cooldown
+            const INSULT_COOLDOWN = 2500; // 2.5 second cooldown (stricter)
 
             developerCards.forEach(card => {
                 const userId = card.getAttribute('data-user-id');
                 if (userId === '378501056008683530') {
+                    const originalCursor = card.style.cursor;
                     card.style.cursor = 'pointer';
-                    card.addEventListener('click', async function() {
-                        // Check cooldown
+
+                    card.addEventListener('click', async function(e) {
+                        // Strict cooldown check
                         const now = Date.now();
-                        if (now - lastInsultTime < INSULT_COOLDOWN) {
-                            console.log('Cooldown active. Please wait before clicking again.');
-                            return;
+                        const timeSinceLastClick = now - lastInsultTime;
+
+                        if (timeSinceLastClick < INSULT_COOLDOWN) {
+                            console.log(`Cooldown active. Wait ${Math.ceil((INSULT_COOLDOWN - timeSinceLastClick) / 1000)}s`);
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
                         }
 
                         // Prevent multiple simultaneous requests
                         if (isInsultLoading) {
-                            console.log('Request already in progress...');
-                            return;
+                            console.log('Request already in progress. Please wait...');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
                         }
 
+                        // Disable clicking during request
                         isInsultLoading = true;
                         lastInsultTime = now;
+                        card.style.cursor = 'not-allowed';
+                        card.style.opacity = '0.6';
 
                         // Remove any existing insult display
                         const existingInsult = document.querySelector('.insult-display');
@@ -509,10 +520,21 @@
                                 setTimeout(() => errorDisplay.remove(), 500);
                             }, 5000);
                         } finally {
-                            // Reset loading flag after a short delay
+                            // Reset loading flag and visual state after cooldown
                             setTimeout(() => {
                                 isInsultLoading = false;
-                            }, 100);
+                                card.style.cursor = 'pointer';
+                                card.style.opacity = '1';
+                            }, 500);
+                        }
+                    });
+
+                    // Prevent default behavior on card
+                    card.addEventListener('mousedown', function(e) {
+                        if (isInsultLoading) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
                         }
                     });
                 }

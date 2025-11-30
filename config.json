@@ -1,5 +1,5 @@
 {
-  "port": 80,
+  "port": 3000,
   "productionPort": 80,
   "supportServer": {
     "id": "1404523107544469545",

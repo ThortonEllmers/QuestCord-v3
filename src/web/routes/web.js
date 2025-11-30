@@ -4,6 +4,11 @@ const { GlobalStatsModel, LeaderboardModel, StaffModel } = require('../../databa
 const config = require('../../../config.json');
 const insults = require('../../../config/insults.json');
 
+// Simple in-memory rate limiter for insults
+const insultRateLimits = new Map();
+const RATE_LIMIT_WINDOW = 2000; // 2 seconds
+const MAX_REQUESTS = 1; // 1 request per window
+
 // Helper function to format large numbers with abbreviations
 function formatLargeNumber(num) {
     if (num >= 1e15) { // Quadrillion
@@ -33,9 +38,40 @@ router.get('/health', (req, res) => {
     });
 });
 
-// Random insult endpoint
+// Random insult endpoint with rate limiting
 router.get('/api/insult', (req, res) => {
     try {
+        // Rate limiting by IP
+        const clientIp = req.ip || req.connection.remoteAddress;
+        const now = Date.now();
+        const rateLimitData = insultRateLimits.get(clientIp);
+
+        if (rateLimitData) {
+            const timeSinceLastRequest = now - rateLimitData.lastRequest;
+
+            if (timeSinceLastRequest < RATE_LIMIT_WINDOW) {
+                // Too many requests
+                const waitTime = Math.ceil((RATE_LIMIT_WINDOW - timeSinceLastRequest) / 1000);
+                return res.status(429).json({
+                    insult: `Slow down! Wait ${waitTime} seconds before requesting another insult.`
+                });
+            }
+        }
+
+        // Update rate limit data
+        insultRateLimits.set(clientIp, {
+            lastRequest: now,
+            count: 1
+        });
+
+        // Clean up old rate limit entries (older than 5 minutes)
+        const fiveMinutesAgo = now - 300000;
+        for (const [ip, data] of insultRateLimits.entries()) {
+            if (data.lastRequest < fiveMinutesAgo) {
+                insultRateLimits.delete(ip);
+            }
+        }
+
         // Check if insults array exists and has items
         if (!insults.insults || insults.insults.length === 0) {
             return res.json({ insult: 'No insults configured yet. Add some to config/insults.json!' });
@@ -53,6 +89,11 @@ router.get('/api/insult', (req, res) => {
         console.error('Error fetching insult:', error);
         res.json({ insult: 'Error loading insult. Check server logs.' });
     }
+});
+
+// Make People Cry prank page
+router.get('/makepeoplecry', (req, res) => {
+    res.render('makepeoplecry');
 });
 
 router.get('/', async (req, res) => {
