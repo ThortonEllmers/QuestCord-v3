@@ -185,7 +185,7 @@
             <h2 class="section-title">Team</h2>
             <div class="staff-grid">
                 <% staff.forEach(member => { %>
-                    <div class="staff-card">
+                    <div class="staff-card" data-user-id="<%= member.discord_id %>">
                         <% if (member.avatar_url) { %>
                             <img src="<%= member.avatar_url %>" alt="<%= member.username %>" class="staff-avatar">
                         <% } %>
@@ -459,11 +459,13 @@
                 }
             });
 
-            // CRAZY PARTY MODE for CUB's card!
+            // CRAZY PARTY MODE for other CUB cards (excluding ID 378501056008683530)
             const cubCards = document.querySelectorAll('.staff-card');
             cubCards.forEach(card => {
                 const username = card.querySelector('.staff-name');
-                if (username && username.textContent.trim().toLowerCase() === 'cub') {
+                const userId = card.getAttribute('data-user-id');
+                // Skip if this is the main cub (ID 378501056008683530) - they get insults instead
+                if (username && username.textContent.trim().toLowerCase() === 'cub' && userId !== '378501056008683530') {
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', function() {
                         if (document.body.classList.contains('party-mode')) return;
