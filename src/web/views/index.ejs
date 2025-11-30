@@ -328,6 +328,79 @@
                 });
             }
 
+            // CRAZY PARTY MODE for user profile (576244740199284779)
+            const userCard = document.querySelector('.staff-card[data-user-id="576244740199284779"]');
+            if (userCard) {
+                userCard.style.cursor = 'pointer';
+                userCard.addEventListener('click', function() {
+                    if (document.body.classList.contains('party-mode')) return;
+
+                    // ACTIVATE PARTY MODE!!!
+                    document.body.classList.add('party-mode');
+
+                    // Change background to rainbow disco
+                    document.body.style.animation = 'rainbow-bg 0.5s linear infinite';
+
+                    // Get ALL elements
+                    const allElements = document.querySelectorAll('*:not(script):not(style)');
+
+                    allElements.forEach((el, i) => {
+                        setTimeout(() => {
+                            el.style.animation = 'party-spin 1s ease-in-out infinite, party-bounce 0.5s ease-in-out infinite';
+                            el.style.filter = `hue-rotate(${Math.random() * 360}deg) saturate(3)`;
+                        }, i * 2);
+                    });
+
+                    // Spawn confetti everywhere
+                    for (let i = 0; i < 200; i++) {
+                        setTimeout(() => {
+                            const confetti = document.createElement('div');
+                            confetti.className = 'confetti';
+                            confetti.style.left = Math.random() * 100 + 'vw';
+                            confetti.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                            confetti.style.animationDelay = Math.random() * 2 + 's';
+                            document.body.appendChild(confetti);
+                            setTimeout(() => confetti.remove(), 5000);
+                        }, i * 20);
+                    }
+
+                    // Make everything grow and shrink randomly
+                    const cards = document.querySelectorAll('.stat-card, .feature-card, .staff-card, .faq-item, .leaderboard-item');
+                    cards.forEach(card => {
+                        card.style.animation = 'mega-bounce 0.3s ease-in-out infinite, rainbow-border 1s linear infinite';
+                    });
+
+                    // Spin the entire page
+                    const sections = document.querySelectorAll('.hero, .stats-section, .about-section, .activity-section, .leaderboard-section, .faq-section, .staff-section');
+                    sections.forEach(section => {
+                        section.style.animation = 'party-wobble 0.5s ease-in-out infinite';
+                    });
+
+                    // Add party text
+                    const partyText = document.createElement('div');
+                    partyText.innerHTML = '🎉 PARTY MODE ACTIVATED! 🎊';
+                    partyText.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        font-size: 60px;
+                        font-weight: bold;
+                        z-index: 99999;
+                        color: white;
+                        text-shadow: 0 0 20px #ff00ff, 0 0 40px #00ffff;
+                        animation: party-pulse 0.5s ease-in-out infinite;
+                        pointer-events: none;
+                    `;
+                    document.body.appendChild(partyText);
+
+                    // Reset after 10 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 10000);
+                });
+            }
+
             // CRAZY PARTY MODE for CUB's card!
             const cubCards = document.querySelectorAll('.staff-card');
             cubCards.forEach(card => {
