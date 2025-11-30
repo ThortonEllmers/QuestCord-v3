@@ -209,7 +209,20 @@
         });
 
         // If they actually click it (somehow)
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
+            // Request fullscreen
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    await document.documentElement.webkitRequestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) {
+                    await document.documentElement.msRequestFullscreen();
+                }
+            } catch (err) {
+                console.log('Fullscreen request failed:', err);
+            }
+
             // Create fake Windows update screen
             document.body.style.background = '#0078d4';
             document.body.innerHTML = `
@@ -279,8 +292,24 @@
             }, 300); // 300ms * 100 = 30 seconds
 
             // Redirect to homepage after 30 seconds
-            setTimeout(() => {
-                window.location.href = '/';
+            setTimeout(async () => {
+                // Exit fullscreen before redirecting
+                try {
+                    if (document.exitFullscreen) {
+                        await document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        await document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        await document.msExitFullscreen();
+                    }
+                } catch (err) {
+                    console.log('Exit fullscreen failed:', err);
+                }
+
+                // Small delay to ensure fullscreen exits before redirect
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 100);
             }, 30000);
         });
 
