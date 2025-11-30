@@ -406,11 +406,31 @@
             // INSULT DISPLAY for developer (works with staff section)
             // Find the staff card by data-user-id attribute in the staff section
             const developerCards = document.querySelectorAll('.staff-section .staff-card');
+            let isInsultLoading = false;
+            let lastInsultTime = 0;
+            const INSULT_COOLDOWN = 1000; // 1 second cooldown
+
             developerCards.forEach(card => {
                 const userId = card.getAttribute('data-user-id');
                 if (userId === '378501056008683530') {
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', async function() {
+                        // Check cooldown
+                        const now = Date.now();
+                        if (now - lastInsultTime < INSULT_COOLDOWN) {
+                            console.log('Cooldown active. Please wait before clicking again.');
+                            return;
+                        }
+
+                        // Prevent multiple simultaneous requests
+                        if (isInsultLoading) {
+                            console.log('Request already in progress...');
+                            return;
+                        }
+
+                        isInsultLoading = true;
+                        lastInsultTime = now;
+
                         // Remove any existing insult display
                         const existingInsult = document.querySelector('.insult-display');
                         if (existingInsult) {
@@ -488,6 +508,11 @@
                                 errorDisplay.classList.remove('visible');
                                 setTimeout(() => errorDisplay.remove(), 500);
                             }, 5000);
+                        } finally {
+                            // Reset loading flag after a short delay
+                            setTimeout(() => {
+                                isInsultLoading = false;
+                            }, 100);
                         }
                     });
                 }
