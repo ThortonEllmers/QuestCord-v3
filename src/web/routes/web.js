@@ -36,11 +36,22 @@ router.get('/health', (req, res) => {
 // Random insult endpoint
 router.get('/api/insult', (req, res) => {
     try {
+        // Check if insults array exists and has items
+        if (!insults.insults || insults.insults.length === 0) {
+            return res.json({ insult: 'No insults configured yet. Add some to config/insults.json!' });
+        }
+
         const randomInsult = insults.insults[Math.floor(Math.random() * insults.insults.length)];
+
+        // Check if we got a valid insult
+        if (!randomInsult || randomInsult.trim() === '') {
+            return res.json({ insult: 'Error: Empty insult in config!' });
+        }
+
         res.json({ insult: randomInsult });
     } catch (error) {
         console.error('Error fetching insult:', error);
-        res.status(500).json({ error: 'Failed to fetch insult' });
+        res.json({ insult: 'Error loading insult. Check server logs.' });
     }
 });
 
