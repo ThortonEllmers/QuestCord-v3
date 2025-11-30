@@ -14,8 +14,16 @@ async function updateStaffRoles(client, broadcastCallback) {
         const developerRole = supportGuild.roles.cache.get(config.supportServer.roles.developer);
         const staffRole = supportGuild.roles.cache.get(config.supportServer.roles.staff);
 
+        // Track who should be staff
+        const validStaffIds = new Set();
+
         if (developerRole) {
             for (const [memberId, member] of developerRole.members) {
+                // Skip bots
+                if (member.user.bot) continue;
+
+                validStaffIds.add(memberId);
+
                 const avatarUrl = member.user.displayAvatarURL({ size: 128, extension: 'png' });
                 const displayName = member.user.globalName || member.user.username;
                 StaffModel.add(memberId, member.displayName, 'Developer', avatarUrl);
@@ -31,7 +39,12 @@ async function updateStaffRoles(client, broadcastCallback) {
 
         if (staffRole) {
             for (const [memberId, member] of staffRole.members) {
+                // Skip bots
+                if (member.user.bot) continue;
+
                 if (!developerRole || !member.roles.cache.has(config.supportServer.roles.developer)) {
+                    validStaffIds.add(memberId);
+
                     const avatarUrl = member.user.displayAvatarURL({ size: 128, extension: 'png' });
                     const displayName = member.user.globalName || member.user.username;
                     StaffModel.add(memberId, member.displayName, 'Staff', avatarUrl);
@@ -43,6 +56,15 @@ async function updateStaffRoles(client, broadcastCallback) {
                         UserModel.create(memberId, displayName); // Updates on conflict
                     }
                 }
+            }
+        }
+
+        // Remove staff members who no longer have the roles
+        const currentStaff = StaffModel.getAll();
+        for (const staff of currentStaff) {
+            if (!validStaffIds.has(staff.discord_id)) {
+                console.log(`Removing ${staff.username} from staff (no longer has role)`);
+                StaffModel.remove(staff.discord_id);
             }
         }
 
