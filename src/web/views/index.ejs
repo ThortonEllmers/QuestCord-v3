@@ -411,7 +411,11 @@
                 if (userId === '378501056008683530') {
                     card.style.cursor = 'pointer';
                     card.addEventListener('click', async function() {
-                        if (document.querySelector('.insult-display')) return; // Prevent multiple insults
+                        // Remove any existing insult display
+                        const existingInsult = document.querySelector('.insult-display');
+                        if (existingInsult) {
+                            existingInsult.remove();
+                        }
 
                         try {
                             // Fetch random insult from API
