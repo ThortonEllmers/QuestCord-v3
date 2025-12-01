@@ -9,15 +9,26 @@ class BossManager {
     static initialize(client) {
         this.client = client;
         this.scheduleNextBoss();
+        this.startNotificationUpdater();
         console.log('Boss spawning system initialized');
     }
 
     static scheduleNextBoss() {
+        // Get active boss before cleanup to check if it expired
+        const activeBoss = BossModel.getActiveBoss();
+        const now = Math.floor(Date.now() / 1000);
+
+        // Check if there's an active boss that is about to expire
+        if (activeBoss && activeBoss.expires_at <= now && !activeBoss.defeated) {
+            // Boss expired without being defeated - announce despawn
+            this.announceBossDespawn(activeBoss.id);
+        }
+
         BossModel.cleanupExpired();
 
-        const activeBoss = BossModel.getActiveBoss();
-        if (activeBoss) {
-            const timeRemaining = (activeBoss.expires_at * 1000) - Date.now();
+        const currentActiveBoss = BossModel.getActiveBoss();
+        if (currentActiveBoss) {
+            const timeRemaining = (currentActiveBoss.expires_at * 1000) - Date.now();
             if (timeRemaining > 0) {
                 setTimeout(() => this.scheduleNextBoss(), timeRemaining + config.boss.cooldownDuration);
                 console.log(`Active boss found. Next check in ${Math.round(timeRemaining / 60000)} minutes`);
@@ -104,9 +115,10 @@ class BossManager {
             // Calculate time remaining (60 minutes)
             const minutesRemaining = Math.floor(config.boss.spawnDuration / 60000);
 
-            // Create embed
+            // Create embed with custom header
             const embed = new EmbedBuilder()
                 .setColor('#FF6B35')
+                .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
                 .setTitle(`🔥 NEW BOSS ALERT 🔥`)
                 .setDescription(`⚔️ **${bossTemplate.name} has spawned!**\nA Tier ${bossTemplate.tier} ${bossTemplate.rarity} boss has emerged and threatens the realm!`)
                 .addFields(
@@ -146,10 +158,13 @@ class BossManager {
                 .setTimestamp();
 
             // Send announcement with role ping
-            await announcementChannel.send({
+            const message = await announcementChannel.send({
                 content: `<@&${BOSS_ROLE_ID}>`,
                 embeds: [embed]
             });
+
+            // Store message ID and channel ID in database
+            BossModel.setAnnouncementMessage(bossId, message.id, ANNOUNCEMENT_CHANNEL_ID);
 
             console.log(`Boss announcement sent to channel ${ANNOUNCEMENT_CHANNEL_ID}`);
         } catch (error) {
@@ -167,6 +182,213 @@ class BossManager {
             minutesRemaining,
             isAlive: boss.health > 0 && !boss.defeated
         };
+    }
+
+    static async updateBossNotification() {
+        try {
+            const boss = BossModel.getActiveBossWithAnnouncement();
+            if (!boss) return;
+
+            const channel = this.client.channels.cache.get(boss.announcement_channel_id);
+            if (!channel) return;
+
+            const message = await channel.messages.fetch(boss.announcement_message_id);
+            if (!message) return;
+
+            const { ServerModel: SM } = require('../../database/models');
+            const server = SM.findByDiscordId(boss.server_id);
+            if (!server) return;
+
+            const guild = this.client.guilds.cache.get(server.discord_id);
+            if (!guild) return;
+
+            const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+            const timeRemaining = boss.expires_at - Math.floor(Date.now() / 1000);
+            const minutesRemaining = Math.max(0, Math.round(timeRemaining / 60));
+            const healthPercent = Math.round((boss.health / boss.max_health) * 100);
+
+            const embed = new EmbedBuilder()
+                .setColor('#FF6B35')
+                .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
+                .setTitle(`🔥 NEW BOSS ALERT 🔥`)
+                .setDescription(`⚔️ **${boss.boss_name} has spawned!**\nA ${boss.boss_type} boss has emerged and threatens the realm!`)
+                .addFields(
+                    {
+                        name: '💀 Boss Info',
+                        value: `**HP:** ${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()} (${healthPercent}%)\n**Type:** ${boss.boss_type}`,
+                        inline: false
+                    },
+                    {
+                        name: '📍 Location',
+                        value: `**${server.name}**`,
+                        inline: true
+                    },
+                    {
+                        name: '🌐 Visit Website',
+                        value: '[questcord.fun](https://questcord.fun)',
+                        inline: true
+                    },
+                    {
+                        name: '⏰ Time Left',
+                        value: `${minutesRemaining}m`,
+                        inline: true
+                    },
+                    {
+                        name: '⚔️ How to Fight',
+                        value: `• Join the server where the boss spawned\n• Use \`/boss attack\` to deal damage\n• Work together with other players!\n• Defeat it for valuable rewards`,
+                        inline: false
+                    },
+                    {
+                        name: '🚀 How to Travel',
+                        value: `Use \`/travel\` command in any QuestCord server to see available destinations and travel to **${server.name}**!`,
+                        inline: false
+                    }
+                )
+                .setThumbnail(serverIcon)
+                .setFooter({ text: `Boss spawned on server • ${server.name}` })
+                .setTimestamp();
+
+            await message.edit({ embeds: [embed] });
+            console.log(`Boss notification updated for ${boss.boss_name}`);
+        } catch (error) {
+            console.error('Error updating boss notification:', error);
+        }
+    }
+
+    static async announceBossDefeat(bossId) {
+        try {
+            const boss = BossModel.findById(bossId);
+            if (!boss || !boss.announcement_message_id) return;
+
+            const channel = this.client.channels.cache.get(boss.announcement_channel_id);
+            if (!channel) return;
+
+            const message = await channel.messages.fetch(boss.announcement_message_id);
+            if (!message) return;
+
+            const { ServerModel: SM, BossParticipantModel } = require('../../database/models');
+            const server = SM.findByDiscordId(boss.server_id);
+            if (!server) return;
+
+            const guild = this.client.guilds.cache.get(server.discord_id);
+            if (!guild) return;
+
+            const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+            // Get top 5 participants
+            const participants = BossParticipantModel.getParticipants(bossId);
+            const top5 = participants.slice(0, 5);
+
+            let leaderboardText = '';
+            top5.forEach((participant, index) => {
+                const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][index];
+                const rewardMultiplier = index === 0 ? 1.5 : 1;
+                const currencyReward = Math.floor(boss.reward_currency * rewardMultiplier);
+                const gemReward = Math.floor(boss.reward_gems * rewardMultiplier);
+
+                leaderboardText += `${medal} **${participant.username}**\n`;
+                leaderboardText += `   └ Damage: ${participant.damage_dealt.toLocaleString()} | Rewards: ${currencyReward.toLocaleString()} coins, ${gemReward} gems\n`;
+            });
+
+            const embed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
+                .setTitle(`✅ BOSS DEFEATED!`)
+                .setDescription(`⚔️ **${boss.boss_name} has been defeated!**\nThe realm is safe once again!`)
+                .addFields(
+                    {
+                        name: '🏆 Top 5 Warriors',
+                        value: leaderboardText || 'No participants',
+                        inline: false
+                    },
+                    {
+                        name: '📍 Location',
+                        value: `**${server.name}**`,
+                        inline: true
+                    },
+                    {
+                        name: '👥 Total Participants',
+                        value: `${participants.length}`,
+                        inline: true
+                    },
+                    {
+                        name: '⏱️ Defeated At',
+                        value: `<t:${boss.defeated_at}:R>`,
+                        inline: true
+                    }
+                )
+                .setThumbnail(serverIcon)
+                .setFooter({ text: `Boss defeated on server • ${server.name}` })
+                .setTimestamp();
+
+            await message.edit({ content: null, embeds: [embed] });
+            console.log(`Boss defeat notification sent for ${boss.boss_name}`);
+        } catch (error) {
+            console.error('Error announcing boss defeat:', error);
+        }
+    }
+
+    static async announceBossDespawn(bossId) {
+        try {
+            const boss = BossModel.findById(bossId);
+            if (!boss || !boss.announcement_message_id) return;
+
+            const channel = this.client.channels.cache.get(boss.announcement_channel_id);
+            if (!channel) return;
+
+            const message = await channel.messages.fetch(boss.announcement_message_id);
+            if (!message) return;
+
+            const { ServerModel: SM } = require('../../database/models');
+            const server = SM.findByDiscordId(boss.server_id);
+            if (!server) return;
+
+            const guild = this.client.guilds.cache.get(server.discord_id);
+            if (!guild) return;
+
+            const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+            const embed = new EmbedBuilder()
+                .setColor('#FF0000')
+                .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
+                .setTitle(`⏰ BOSS DESPAWNED`)
+                .setDescription(`💨 **${boss.boss_name} has despawned!**\nThe boss escaped as time ran out!`)
+                .addFields(
+                    {
+                        name: '📍 Location',
+                        value: `**${server.name}**`,
+                        inline: true
+                    },
+                    {
+                        name: '❌ Reason',
+                        value: 'Time expired',
+                        inline: true
+                    },
+                    {
+                        name: '💀 Remaining HP',
+                        value: `${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()}`,
+                        inline: true
+                    }
+                )
+                .setThumbnail(serverIcon)
+                .setFooter({ text: `Boss despawned on server • ${server.name}` })
+                .setTimestamp();
+
+            await message.edit({ content: null, embeds: [embed] });
+            console.log(`Boss despawn notification sent for ${boss.boss_name}`);
+        } catch (error) {
+            console.error('Error announcing boss despawn:', error);
+        }
+    }
+
+    static startNotificationUpdater() {
+        // Update boss notification every 10 minutes
+        setInterval(() => {
+            this.updateBossNotification();
+        }, 10 * 60 * 1000); // 10 minutes in milliseconds
+
+        console.log('Boss notification updater started');
     }
 }
 

@@ -903,14 +903,18 @@ body > * {
 }
 
 .footer-legal-link {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    transition: color 0.3s ease;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transition: opacity 0.3s ease;
 }
 
 .footer-legal-link:hover {
-    color: rgba(255, 255, 255, 1);
-    text-decoration: underline;
+    opacity: 0.8;
+    text-decoration: none !important;
+}
+
+.footer-legal-link:visited {
+    color: #ffffff !important;
 }
 
 .footer-separator {

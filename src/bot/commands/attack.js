@@ -68,6 +68,10 @@ module.exports = {
         if (updatedBoss.health <= 0 && !updatedBoss.defeated) {
             BossModel.defeatBoss(boss.id);
 
+            // Announce boss defeat in the notification channel
+            const { BossManager } = require('../utils/bossManager');
+            BossManager.announceBossDefeat(boss.id);
+
             const participants = BossParticipantModel.getParticipants(boss.id);
             const topDealer = BossParticipantModel.getTopDamageDealer(boss.id);
             const bossExp = LevelSystem.getBossExperience(boss.max_health);

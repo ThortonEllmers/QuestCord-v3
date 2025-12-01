@@ -344,6 +344,23 @@ function initializeDatabase() {
         console.log('Migration completed: avatar_url added');
     }
 
+    // Migration: Add announcement tracking to bosses table
+    const bossTableInfo = db.prepare("PRAGMA table_info(bosses)").all();
+    const hasAnnouncementMessageId = bossTableInfo.some(col => col.name === 'announcement_message_id');
+    const hasAnnouncementChannelId = bossTableInfo.some(col => col.name === 'announcement_channel_id');
+
+    if (!hasAnnouncementMessageId) {
+        console.log('Running migration: Adding announcement_message_id to bosses...');
+        db.exec('ALTER TABLE bosses ADD COLUMN announcement_message_id TEXT');
+        console.log('Migration completed: announcement_message_id added');
+    }
+
+    if (!hasAnnouncementChannelId) {
+        console.log('Running migration: Adding announcement_channel_id to bosses...');
+        db.exec('ALTER TABLE bosses ADD COLUMN announcement_channel_id TEXT');
+        console.log('Migration completed: announcement_channel_id added');
+    }
+
     console.log('Database initialized successfully');
 
     // Seed items if this is first run

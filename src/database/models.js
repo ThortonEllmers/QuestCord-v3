@@ -233,6 +233,24 @@ class BossModel {
         const stmt = db.prepare('UPDATE bosses SET defeated = 1 WHERE defeated = 0 AND expires_at <= ?');
         return stmt.run(now);
     }
+
+    static setAnnouncementMessage(bossId, messageId, channelId) {
+        const stmt = db.prepare('UPDATE bosses SET announcement_message_id = ?, announcement_channel_id = ? WHERE id = ?');
+        return stmt.run(messageId, channelId, bossId);
+    }
+
+    static getActiveBossWithAnnouncement() {
+        const now = Math.floor(Date.now() / 1000);
+        const stmt = db.prepare(`
+            SELECT * FROM bosses
+            WHERE defeated = 0
+            AND expires_at > ?
+            AND announcement_message_id IS NOT NULL
+            ORDER BY spawned_at DESC
+            LIMIT 1
+        `);
+        return stmt.get(now);
+    }
 }
 
 class BossParticipantModel {
