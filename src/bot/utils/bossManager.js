@@ -37,7 +37,6 @@ class BossManager {
         }
 
         const stats = GlobalStatsModel.get();
-        const now = Math.floor(Date.now() / 1000);
         const timeSinceLastBoss = now - (stats.last_boss_spawn || 0);
 
         if (timeSinceLastBoss < (config.boss.cooldownDuration / 1000)) {
