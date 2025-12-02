@@ -1,11 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel, BossModel, ServerModel, QuestModel } = require('../../database/models');
-const { isStaff, isDeveloper } = require('../utils/permissions');
-const { LevelSystem } = require('../../utils/levelSystem');
-const { autoEquipItem } = require('../../utils/equipmentHelper');
-const { BossManager } = require('../utils/bossManager');
-const config = require('../../../config.json');
-const { db } = require('../../database/schema');
+const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel, BossModel, ServerModel, QuestModel } = require('../../../database/models');
+const { isStaff, isDeveloper } = require('../../utils/permissions');
+const { LevelSystem } = require('../../../utils/levelSystem');
+const { autoEquipItem } = require('../../../utils/equipmentHelper');
+const { BossManager } = require('../../utils/bossManager');
+const config = require('../../../../config.json');
+const { db } = require('../../../database/schema');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -2028,41 +2028,36 @@ function createAdminHelpEmbed(category) {
     switch (category) {
         case 'overview':
             embed
-                .setTitle('📋 Admin Command Center')
-                .setDescription('**Welcome to the Admin Control Panel!**\n\nSelect a category below to view detailed commands.\n\n**Permission Levels:**\n🟢 **Staff** - Most admin commands\n🔴 **Developer** - Destructive/critical commands')
+                .setTitle('📋 QuestCord Admin Command Center')
+                .setDescription('**Welcome to the Admin Control Panel!**\n\nAdmin commands are organized into specialized groups:\n\n**Permission Levels:**\n🟢 **Staff** - Most commands | 🔴 **Developer** - Critical operations')
                 .addFields(
                     {
-                        name: '👤 User Management',
-                        value: '7 commands for managing user data and currency',
-                        inline: true
+                        name: '📋 /admin',
+                        value: '**Core Admin Commands**\n• User data & economy (wipe, reset, give currency/gems)\n• Set levels\n• Give items\n• Reset leaderboard\n• Command management (disable/restrict)',
+                        inline: false
                     },
                     {
-                        name: '💀 Boss Management',
-                        value: '4 commands for controlling boss spawns',
-                        inline: true
+                        name: '💀 /admin-boss',
+                        value: '**Boss Management** 🟢\n• Force spawn boss on servers\n• Modify boss health\n• View participants\n• Clear active boss 🔴',
+                        inline: false
                     },
                     {
-                        name: '📜 Quest Management',
-                        value: '3 commands for quest resets',
-                        inline: true
+                        name: '👤 /admin-user',
+                        value: '**User Stats & Gameplay** 🟢\n• Heal users\n• Set attack/defense stats\n• Clear inventory 🔴\n• Manage travel (cancel/complete)\n• PVP controls (reset stats/toggle)',
+                        inline: false
                     },
                     {
-                        name: '🎁 Items',
-                        value: '1 command for giving items',
-                        inline: true
+                        name: '📜 /admin-quest',
+                        value: '**Quest Management** 🟢\n• Force complete quests\n• Remove quests 🔴\n• Reset quests (in /admin)',
+                        inline: false
                     },
                     {
-                        name: '🏆 Leaderboard',
-                        value: '1 command for resetting points',
-                        inline: true
-                    },
-                    {
-                        name: '🔧 Command Management',
-                        value: '6 commands for controlling commands',
-                        inline: true
+                        name: '🏰 /admin-server',
+                        value: '**Server Management** 🔴\n• Force opt-in servers\n• Force opt-out servers',
+                        inline: false
                     }
                 )
-                .setFooter({ text: 'Click a category button below to view detailed commands' });
+                .setFooter({ text: 'Select a category below to see detailed commands • 🔴 = Developer Only' });
             break;
 
         case 'user':

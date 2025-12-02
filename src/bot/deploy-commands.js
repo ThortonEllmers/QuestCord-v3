@@ -5,15 +5,29 @@ require('dotenv').config();
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    if ('data' in command && 'execute' in command) {
-        commands.push(command.data.toJSON());
+// Function to recursively read command files from directories
+function loadCommands(dir) {
+    const items = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const item of items) {
+        const itemPath = path.join(dir, item.name);
+
+        if (item.isDirectory()) {
+            // Recursively load commands from subdirectories
+            loadCommands(itemPath);
+        } else if (item.isFile() && item.name.endsWith('.js')) {
+            // Load command file
+            const command = require(itemPath);
+            if ('data' in command && 'execute' in command) {
+                commands.push(command.data.toJSON());
+            }
+        }
     }
 }
+
+// Load all commands
+loadCommands(commandsPath);
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
