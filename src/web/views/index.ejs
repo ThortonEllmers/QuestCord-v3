@@ -16,6 +16,11 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="<%= websiteEffects.performanceMode ? 'performance-mode' : '' %> <%= !websiteEffects.effects.backgroundAnimations ? 'no-bg-animations' : '' %> <%= !websiteEffects.effects.cardHoverEffects ? 'no-card-effects' : '' %> <%= !websiteEffects.effects.cosmicParticles ? 'no-particles' : '' %> <%= !websiteEffects.effects.auroraEffect ? 'no-aurora' : '' %> <%= !websiteEffects.effects.gradientAnimations ? 'no-gradients' : '' %>">
+    <!-- Cosmic Particles Effect -->
+    <% if (websiteEffects.effects.cosmicParticles) { %>
+    <div class="cosmic-particles"></div>
+    <% } %>
+
     <!-- Scroll Path Line (disabled) -->
     <!-- <div class="scroll-path-container" id="scrollPathContainer"></div> -->
 
