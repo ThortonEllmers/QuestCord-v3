@@ -3,6 +3,7 @@ const router = express.Router();
 const { GlobalStatsModel, LeaderboardModel, StaffModel } = require('../../database/models');
 const config = require('../../../config.json');
 const insults = require('../../../config/insults.json');
+const websiteEffects = require('../../../config/website-effects.json');
 
 // Simple in-memory rate limiter for insults
 const insultRateLimits = new Map();
@@ -154,7 +155,8 @@ router.get('/', async (req, res) => {
             topPlayers,
             staff,
             peasants,
-            config
+            config,
+            websiteEffects
         });
     } catch (error) {
         console.error('Error rendering index:', error);

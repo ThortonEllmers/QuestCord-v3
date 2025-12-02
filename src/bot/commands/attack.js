@@ -70,7 +70,7 @@ module.exports = {
 
             // Announce boss defeat in the notification channel
             const { BossManager } = require('../utils/bossManager');
-            BossManager.announceBossDefeat(boss.id);
+            await BossManager.announceBossDefeat(boss.id);
 
             const participants = BossParticipantModel.getParticipants(boss.id);
             const topDealer = BossParticipantModel.getTopDamageDealer(boss.id);

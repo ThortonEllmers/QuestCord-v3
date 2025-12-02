@@ -1319,3 +1319,78 @@ body > * {
         padding: 40px 15px;
     }
 }
+
+/* ==================== EFFECT TOGGLE CLASSES ==================== */
+
+/* Disable background animations */
+body.no-bg-animations::before,
+body.no-bg-animations::after {
+    animation: none !important;
+    background:
+        linear-gradient(45deg, rgba(10, 10, 26, 0.95) 0%, rgba(26, 10, 62, 0.9) 50%, rgba(15, 31, 62, 0.95) 100%) !important;
+}
+
+/* Disable cosmic particles */
+body.no-particles .cosmic-particles,
+body.no-particles .cosmic-particles::before,
+body.no-particles .cosmic-particles::after {
+    display: none !important;
+}
+
+/* Disable aurora effect */
+body.no-aurora .aurora-effect,
+body.no-aurora .aurora-effect::before,
+body.no-aurora .aurora-effect::after {
+    display: none !important;
+}
+
+/* Disable gradient animations */
+body.no-gradients .hero-title,
+body.no-gradients .section-title,
+body.no-gradients .stat-value {
+    animation: none !important;
+}
+
+body.no-gradients .hero-icon {
+    animation: none !important;
+    filter: none !important;
+}
+
+/* Disable card hover effects */
+body.no-card-effects .stat-card:hover,
+body.no-card-effects .feature-card:hover,
+body.no-card-effects .leaderboard-item:hover,
+body.no-card-effects .staff-card:hover,
+body.no-card-effects .faq-item:hover,
+body.no-card-effects .content-image img:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+body.no-card-effects .stat-card,
+body.no-card-effects .feature-card,
+body.no-card-effects .leaderboard-item,
+body.no-card-effects .staff-card,
+body.no-card-effects .faq-item {
+    transition: none !important;
+}
+
+/* Performance mode - disable all effects */
+body.performance-mode::before,
+body.performance-mode::after,
+body.performance-mode .cosmic-particles,
+body.performance-mode .aurora-effect {
+    display: none !important;
+}
+
+body.performance-mode * {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.performance-mode .stat-card:hover,
+body.performance-mode .feature-card:hover,
+body.performance-mode .leaderboard-item:hover,
+body.performance-mode .staff-card:hover {
+    transform: none !important;
+}

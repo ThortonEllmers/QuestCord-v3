@@ -13,7 +13,7 @@ class BossManager {
         console.log('Boss spawning system initialized');
     }
 
-    static scheduleNextBoss() {
+    static async scheduleNextBoss() {
         // Get active boss before cleanup to check if it expired
         const activeBoss = BossModel.getActiveBoss();
         const now = Math.floor(Date.now() / 1000);
@@ -21,7 +21,7 @@ class BossManager {
         // Check if there's an active boss that is about to expire
         if (activeBoss && activeBoss.expires_at <= now && !activeBoss.defeated) {
             // Boss expired without being defeated - announce despawn
-            this.announceBossDespawn(activeBoss.id);
+            await this.announceBossDespawn(activeBoss.id);
         }
 
         BossModel.cleanupExpired();

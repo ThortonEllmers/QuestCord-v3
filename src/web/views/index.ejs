@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="<%= websiteEffects.performanceMode ? 'performance-mode' : '' %> <%= !websiteEffects.effects.backgroundAnimations ? 'no-bg-animations' : '' %> <%= !websiteEffects.effects.cardHoverEffects ? 'no-card-effects' : '' %> <%= !websiteEffects.effects.cosmicParticles ? 'no-particles' : '' %> <%= !websiteEffects.effects.auroraEffect ? 'no-aurora' : '' %> <%= !websiteEffects.effects.gradientAnimations ? 'no-gradients' : '' %>">
     <!-- Scroll Path Line (disabled) -->
     <!-- <div class="scroll-path-container" id="scrollPathContainer"></div> -->
 
@@ -240,6 +240,7 @@
         })();
 
         // NPC Card explosion effect
+        <% if (websiteEffects.interactiveFeatures.chaosMode) { %>
         document.addEventListener('DOMContentLoaded', function() {
             const npcCard = document.querySelector('.npc-card[data-user-id="245784383506743296"]');
 
@@ -329,8 +330,11 @@
                     }, 500); // Wait for shake to finish
                 });
             }
+        });
+        <% } %>
 
             // CRAZY PARTY MODE for user profile (576244740199284779)
+            <% if (websiteEffects.interactiveFeatures.partyMode) { %>
             const userCard = document.querySelector('.staff-card[data-user-id="576244740199284779"]');
             if (userCard) {
                 userCard.style.cursor = 'pointer';
@@ -402,8 +406,10 @@
                     }, 10000);
                 });
             }
+            <% } %>
 
             // INSULT DISPLAY for developer (works with staff section)
+            <% if (websiteEffects.interactiveFeatures.insultDisplay) { %>
             // Find the staff card by data-user-id attribute in the staff section
             const developerCards = document.querySelectorAll('.staff-section .staff-card');
             let isInsultLoading = false;
@@ -539,8 +545,10 @@
                     });
                 }
             });
+            <% } %>
 
             // CRAZY PARTY MODE for other CUB cards (excluding ID 378501056008683530)
+            <% if (websiteEffects.interactiveFeatures.partyMode) { %>
             const cubCards = document.querySelectorAll('.staff-card');
             cubCards.forEach(card => {
                 const username = card.querySelector('.staff-name');
@@ -617,6 +625,7 @@
                     });
                 }
             });
+            <% } %>
 
             // Zigzag scroll path (disabled for better UX)
             // The scroll path feature has been disabled to improve scrolling performance

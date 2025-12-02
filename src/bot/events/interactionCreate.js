@@ -49,6 +49,36 @@ module.exports = {
                     const battleId = interaction.customId.replace('pvp_battle_attack_', '');
                     return await handlePvpAttack(interaction, battleId, arenaeBattles);
                 }
+                // Admin help menu buttons
+                if (interaction.customId.startsWith('admin_help_')) {
+                    // Check if user is staff
+                    if (!await isStaff(interaction)) {
+                        return interaction.reply({
+                            content: 'Admin help is only available to QuestCord staff.',
+                            ephemeral: true
+                        });
+                    }
+
+                    const category = interaction.customId.replace('admin_help_', '');
+                    const { createAdminHelpEmbed, createAdminHelpButtons } = require('../commands/admin');
+
+                    const embed = createAdminHelpEmbed(category);
+                    const buttons = createAdminHelpButtons(category);
+
+                    await interaction.update({ embeds: [embed], components: buttons });
+                    return;
+                }
+                // Help category navigation buttons
+                if (interaction.customId.startsWith('help_cat_')) {
+                    const category = interaction.customId.replace('help_cat_', '');
+                    const { createHelpEmbed, createHelpButtons } = require('../commands/help');
+
+                    const embed = createHelpEmbed(category);
+                    const buttons = createHelpButtons(category);
+
+                    await interaction.update({ embeds: [embed], components: buttons });
+                    return;
+                }
                 // Help menu buttons
                 if (interaction.customId === 'help_tutorial') {
                     const tutorialCommand = interaction.client.commands.get('tutorial');

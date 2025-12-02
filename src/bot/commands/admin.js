@@ -1,8 +1,9 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel } = require('../../database/models');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel, BossModel, ServerModel, QuestModel } = require('../../database/models');
 const { isStaff, isDeveloper } = require('../utils/permissions');
 const { LevelSystem } = require('../../utils/levelSystem');
 const { autoEquipItem } = require('../../utils/equipmentHelper');
+const { BossManager } = require('../utils/bossManager');
 const config = require('../../../config.json');
 const { db } = require('../../database/schema');
 
@@ -214,6 +215,186 @@ module.exports = {
                         .setAutocomplete(true)
                 )
         )
+        // Boss Management Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('force-spawn-boss')
+                .setDescription('Force spawn a boss on a server (Staff only)')
+                .addStringOption(option =>
+                    option.setName('server-id')
+                        .setDescription('Discord server ID to spawn boss on')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set-boss-health')
+                .setDescription('Set the current boss health (Staff only)')
+                .addIntegerOption(option =>
+                    option.setName('health')
+                        .setDescription('New health value')
+                        .setRequired(true)
+                        .setMinValue(0)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('view-boss-participants')
+                .setDescription('View all participants for the active boss')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('clear-boss')
+                .setDescription('Clear the active boss (Developer only)')
+        )
+        // Travel Management Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('cancel-travel')
+                .setDescription('Cancel a user\'s active travel')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to cancel travel for')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('force-complete-travel')
+                .setDescription('Force complete a user\'s travel instantly')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to complete travel for')
+                        .setRequired(true)
+                )
+        )
+        // PVP Management Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset-pvp-stats')
+                .setDescription('Reset a user\'s PVP statistics')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to reset PVP stats for')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('toggle-pvp-for-user')
+                .setDescription('Toggle PVP status for a user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to toggle PVP for')
+                        .setRequired(true)
+                )
+        )
+        // Server Management Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('force-optin-server')
+                .setDescription('Force opt-in a server (Developer only)')
+                .addStringOption(option =>
+                    option.setName('server-id')
+                        .setDescription('Discord server ID')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('force-optout-server')
+                .setDescription('Force opt-out a server (Developer only)')
+                .addStringOption(option =>
+                    option.setName('server-id')
+                        .setDescription('Discord server ID')
+                        .setRequired(true)
+                )
+        )
+        // User Stats Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('heal-user')
+                .setDescription('Restore a user\'s health to maximum')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to heal')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set-attack')
+                .setDescription('Set a user\'s base attack stat')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to modify')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('attack')
+                        .setDescription('Attack value')
+                        .setRequired(true)
+                        .setMinValue(0)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set-defense')
+                .setDescription('Set a user\'s base defense stat')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to modify')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('defense')
+                        .setDescription('Defense value')
+                        .setRequired(true)
+                        .setMinValue(0)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('clear-inventory')
+                .setDescription('Clear all items from a user\'s inventory (Developer only)')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to clear inventory for')
+                        .setRequired(true)
+                )
+        )
+        // Quest Management Commands
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('force-complete-quest')
+                .setDescription('Force complete a quest for a user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('quest-id')
+                        .setDescription('The quest ID')
+                        .setRequired(true)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('remove-quest')
+                .setDescription('Remove a specific quest (Developer only)')
+                .addIntegerOption(option =>
+                    option.setName('quest-id')
+                        .setDescription('The quest ID to remove')
+                        .setRequired(true)
+                )
+        )
+        // Help Command
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('help')
+                .setDescription('Show all available admin commands')
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -280,6 +461,64 @@ module.exports = {
                 break;
             case 'list-restrictions':
                 await handleListRestrictions(interaction);
+                break;
+            // Boss Management
+            case 'force-spawn-boss':
+                await handleForceSpawnBoss(interaction);
+                break;
+            case 'set-boss-health':
+                await handleSetBossHealth(interaction);
+                break;
+            case 'view-boss-participants':
+                await handleViewBossParticipants(interaction);
+                break;
+            case 'clear-boss':
+                await handleClearBoss(interaction);
+                break;
+            // Travel Management
+            case 'cancel-travel':
+                await handleCancelTravel(interaction, targetUser, user);
+                break;
+            case 'force-complete-travel':
+                await handleForceCompleteTravel(interaction, targetUser, user);
+                break;
+            // PVP Management
+            case 'reset-pvp-stats':
+                await handleResetPvpStats(interaction, targetUser, user);
+                break;
+            case 'toggle-pvp-for-user':
+                await handleTogglePvpForUser(interaction, targetUser, user);
+                break;
+            // Server Management
+            case 'force-optin-server':
+                await handleForceOptinServer(interaction);
+                break;
+            case 'force-optout-server':
+                await handleForceOptoutServer(interaction);
+                break;
+            // User Stats
+            case 'heal-user':
+                await handleHealUser(interaction, targetUser, user);
+                break;
+            case 'set-attack':
+                await handleSetAttack(interaction, targetUser, user);
+                break;
+            case 'set-defense':
+                await handleSetDefense(interaction, targetUser, user);
+                break;
+            case 'clear-inventory':
+                await handleClearInventory(interaction, targetUser, user);
+                break;
+            // Quest Management
+            case 'force-complete-quest':
+                await handleForceCompleteQuest(interaction, targetUser, user);
+                break;
+            case 'remove-quest':
+                await handleRemoveQuest(interaction);
+                break;
+            // Help
+            case 'help':
+                await handleHelp(interaction);
                 break;
         }
     },
@@ -1171,3 +1410,1097 @@ async function handleListRestrictions(interaction) {
         });
     }
 }
+
+// ==================== BOSS MANAGEMENT ====================
+
+async function handleForceSpawnBoss(interaction) {
+    const serverId = interaction.options.getString('server-id');
+
+    try {
+        const server = ServerModel.findByDiscordId(serverId);
+
+        if (!server) {
+            return interaction.reply({
+                content: `❌ Server with ID \`${serverId}\` not found in database.`,
+                ephemeral: true
+            });
+        }
+
+        if (!server.opted_in) {
+            return interaction.reply({
+                content: `❌ Server **${server.name}** is not opted in to boss spawns.`,
+                ephemeral: true
+            });
+        }
+
+        // Check if there's already an active boss
+        const activeBoss = BossModel.getActiveBoss();
+        if (activeBoss) {
+            return interaction.reply({
+                content: `❌ There is already an active boss: **${activeBoss.boss_name}** (${activeBoss.id})`,
+                ephemeral: true
+            });
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        // Force spawn boss using BossManager
+        const { getRandomBoss } = require('../utils/questData');
+        const bossTemplate = getRandomBoss();
+        const expiresAt = Math.floor(Date.now() / 1000) + (config.boss.spawnDuration / 1000);
+
+        const result = BossModel.create(
+            bossTemplate.type,
+            bossTemplate.name,
+            serverId,
+            bossTemplate.health,
+            bossTemplate.rewardCurrency,
+            bossTemplate.rewardGems,
+            expiresAt
+        );
+
+        // Announce the boss spawn
+        await BossManager.announceBossSpawn(server, bossTemplate, result.lastInsertRowid);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('✅ Boss Force Spawned')
+            .setDescription(`**${bossTemplate.name}** has been spawned on **${server.name}**`)
+            .addFields(
+                {
+                    name: 'Boss Type',
+                    value: bossTemplate.type,
+                    inline: true
+                },
+                {
+                    name: 'Health',
+                    value: bossTemplate.health.toLocaleString(),
+                    inline: true
+                },
+                {
+                    name: 'Rewards',
+                    value: `${bossTemplate.rewardCurrency} coins, ${bossTemplate.rewardGems} gems`,
+                    inline: false
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.editReply({ embeds: [embed] });
+        console.log(`[ADMIN] Boss force spawned by ${interaction.user.username}: ${bossTemplate.name} on ${server.name}`);
+    } catch (error) {
+        console.error('Error force spawning boss:', error);
+        await interaction.editReply({
+            content: `An error occurred while spawning the boss: ${error.message}`
+        });
+    }
+}
+
+async function handleSetBossHealth(interaction) {
+    const health = interaction.options.getInteger('health');
+
+    try {
+        const boss = BossModel.getActiveBoss();
+
+        if (!boss) {
+            return interaction.reply({
+                content: '❌ There is no active boss to modify.',
+                ephemeral: true
+            });
+        }
+
+        const oldHealth = boss.health;
+        db.prepare('UPDATE bosses SET health = ? WHERE id = ?').run(health, boss.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('⚙️ Boss Health Modified')
+            .setDescription(`Health for **${boss.boss_name}** has been changed`)
+            .addFields(
+                {
+                    name: 'Previous Health',
+                    value: `${oldHealth.toLocaleString()} / ${boss.max_health.toLocaleString()}`,
+                    inline: true
+                },
+                {
+                    name: 'New Health',
+                    value: `${health.toLocaleString()} / ${boss.max_health.toLocaleString()}`,
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        // Update the notification
+        await BossManager.updateBossNotification();
+
+        console.log(`[ADMIN] Boss health modified by ${interaction.user.username}: ${oldHealth} -> ${health}`);
+    } catch (error) {
+        console.error('Error setting boss health:', error);
+        await interaction.reply({
+            content: 'An error occurred while modifying boss health.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleViewBossParticipants(interaction) {
+    try {
+        const boss = BossModel.getActiveBoss();
+
+        if (!boss) {
+            return interaction.reply({
+                content: '❌ There is no active boss.',
+                ephemeral: true
+            });
+        }
+
+        const participants = BossParticipantModel.getParticipants(boss.id);
+
+        if (participants.length === 0) {
+            return interaction.reply({
+                content: `No participants yet for **${boss.boss_name}**.`,
+                ephemeral: true
+            });
+        }
+
+        const participantList = participants.map((p, i) =>
+            `${i + 1}. **${p.username}** - ${p.damage_dealt.toLocaleString()} damage`
+        ).join('\n');
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle(`👥 Participants for ${boss.boss_name}`)
+            .setDescription(participantList)
+            .setFooter({ text: `Total: ${participants.length} participants` })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (error) {
+        console.error('Error viewing boss participants:', error);
+        await interaction.reply({
+            content: 'An error occurred while viewing participants.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleClearBoss(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can clear the active boss.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const boss = BossModel.getActiveBoss();
+
+        if (!boss) {
+            return interaction.reply({
+                content: '❌ There is no active boss to clear.',
+                ephemeral: true
+            });
+        }
+
+        // Delete boss and related data
+        db.prepare('DELETE FROM bosses WHERE id = ?').run(boss.id);
+        db.prepare('DELETE FROM boss_participants WHERE boss_id = ?').run(boss.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.error)
+            .setTitle('🗑️ Boss Cleared')
+            .setDescription(`**${boss.boss_name}** has been removed from the database.`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Boss cleared by ${interaction.user.username}: ${boss.boss_name} (ID: ${boss.id})`);
+    } catch (error) {
+        console.error('Error clearing boss:', error);
+        await interaction.reply({
+            content: 'An error occurred while clearing the boss.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== TRAVEL MANAGEMENT ====================
+
+async function handleCancelTravel(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    if (!user.traveling) {
+        return interaction.reply({
+            content: `❌ ${targetUser.username} is not currently traveling.`,
+            ephemeral: true
+        });
+    }
+
+    try {
+        UserModel.completeTravel(targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🚫 Travel Cancelled')
+            .setDescription(`Travel to **${user.travel_destination}** has been cancelled for ${targetUser.username}`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Travel cancelled by ${interaction.user.username} for ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error cancelling travel:', error);
+        await interaction.reply({
+            content: 'An error occurred while cancelling travel.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleForceCompleteTravel(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    if (!user.traveling) {
+        return interaction.reply({
+            content: `❌ ${targetUser.username} is not currently traveling.`,
+            ephemeral: true
+        });
+    }
+
+    try {
+        const destination = user.travel_destination;
+        UserModel.completeTravel(targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('✅ Travel Force Completed')
+            .setDescription(`${targetUser.username} has instantly arrived at **${destination}**`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Travel force completed by ${interaction.user.username} for ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error force completing travel:', error);
+        await interaction.reply({
+            content: 'An error occurred while completing travel.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== PVP MANAGEMENT ====================
+
+async function handleResetPvpStats(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        db.prepare('UPDATE users SET pvp_wins = 0, pvp_losses = 0 WHERE discord_id = ?').run(targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🔄 PVP Stats Reset')
+            .setDescription(`PVP statistics have been reset for ${targetUser.username}`)
+            .addFields(
+                {
+                    name: 'Previous Stats',
+                    value: `${user.pvp_wins}W - ${user.pvp_losses}L`,
+                    inline: true
+                },
+                {
+                    name: 'New Stats',
+                    value: '0W - 0L',
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] PVP stats reset by ${interaction.user.username} for ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error resetting PVP stats:', error);
+        await interaction.reply({
+            content: 'An error occurred while resetting PVP stats.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleTogglePvpForUser(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const newStatus = user.pvp_enabled ? 0 : 1;
+        db.prepare('UPDATE users SET pvp_enabled = ? WHERE discord_id = ?').run(newStatus, targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(newStatus ? config.theme.colors.success : config.theme.colors.error)
+            .setTitle(`⚔️ PVP ${newStatus ? 'Enabled' : 'Disabled'}`)
+            .setDescription(`PVP has been ${newStatus ? 'enabled' : 'disabled'} for ${targetUser.username}`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] PVP ${newStatus ? 'enabled' : 'disabled'} by ${interaction.user.username} for ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error toggling PVP:', error);
+        await interaction.reply({
+            content: 'An error occurred while toggling PVP status.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== SERVER MANAGEMENT ====================
+
+async function handleForceOptinServer(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can force opt-in servers.',
+            ephemeral: true
+        });
+    }
+
+    const serverId = interaction.options.getString('server-id');
+
+    try {
+        const server = ServerModel.findByDiscordId(serverId);
+
+        if (!server) {
+            // Try to fetch from Discord and create
+            const guild = interaction.client.guilds.cache.get(serverId);
+            if (!guild) {
+                return interaction.reply({
+                    content: `❌ Server with ID \`${serverId}\` not found.`,
+                    ephemeral: true
+                });
+            }
+
+            ServerModel.create(serverId, guild.name, guild.memberCount);
+        }
+
+        ServerModel.updateOptIn(serverId, true);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('✅ Server Force Opted In')
+            .setDescription(`Server \`${serverId}\` has been force opted in to boss spawns.`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Server force opted in by ${interaction.user.username}: ${serverId}`);
+    } catch (error) {
+        console.error('Error force opting in server:', error);
+        await interaction.reply({
+            content: 'An error occurred while opting in the server.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleForceOptoutServer(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can force opt-out servers.',
+            ephemeral: true
+        });
+    }
+
+    const serverId = interaction.options.getString('server-id');
+
+    try {
+        const server = ServerModel.findByDiscordId(serverId);
+
+        if (!server) {
+            return interaction.reply({
+                content: `❌ Server with ID \`${serverId}\` not found in database.`,
+                ephemeral: true
+            });
+        }
+
+        ServerModel.updateOptIn(serverId, false);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('🚫 Server Force Opted Out')
+            .setDescription(`Server **${server.name}** (\`${serverId}\`) has been force opted out of boss spawns.`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Server force opted out by ${interaction.user.username}: ${serverId}`);
+    } catch (error) {
+        console.error('Error force opting out server:', error);
+        await interaction.reply({
+            content: 'An error occurred while opting out the server.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== USER STATS MANAGEMENT ====================
+
+async function handleHealUser(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        db.prepare('UPDATE users SET health = max_health WHERE discord_id = ?').run(targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('💚 User Healed')
+            .setDescription(`${targetUser.username} has been fully healed`)
+            .addFields(
+                {
+                    name: 'Previous Health',
+                    value: `${user.health} / ${user.max_health}`,
+                    inline: true
+                },
+                {
+                    name: 'New Health',
+                    value: `${user.max_health} / ${user.max_health}`,
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] User healed by ${interaction.user.username}: ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error healing user:', error);
+        await interaction.reply({
+            content: 'An error occurred while healing the user.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleSetAttack(interaction, targetUser, user) {
+    const attack = interaction.options.getInteger('attack');
+
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const oldAttack = user.attack;
+        db.prepare('UPDATE users SET attack = ? WHERE discord_id = ?').run(attack, targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle('⚔️ Attack Stat Modified')
+            .setDescription(`Base attack for ${targetUser.username} has been changed`)
+            .addFields(
+                {
+                    name: 'Previous Attack',
+                    value: oldAttack.toString(),
+                    inline: true
+                },
+                {
+                    name: 'New Attack',
+                    value: attack.toString(),
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Attack stat modified by ${interaction.user.username}: ${targetUser.username} ${oldAttack} -> ${attack}`);
+    } catch (error) {
+        console.error('Error setting attack:', error);
+        await interaction.reply({
+            content: 'An error occurred while setting attack stat.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleSetDefense(interaction, targetUser, user) {
+    const defense = interaction.options.getInteger('defense');
+
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const oldDefense = user.defense;
+        db.prepare('UPDATE users SET defense = ? WHERE discord_id = ?').run(defense, targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.primary)
+            .setTitle('🛡️ Defense Stat Modified')
+            .setDescription(`Base defense for ${targetUser.username} has been changed`)
+            .addFields(
+                {
+                    name: 'Previous Defense',
+                    value: oldDefense.toString(),
+                    inline: true
+                },
+                {
+                    name: 'New Defense',
+                    value: defense.toString(),
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Defense stat modified by ${interaction.user.username}: ${targetUser.username} ${oldDefense} -> ${defense}`);
+    } catch (error) {
+        console.error('Error setting defense:', error);
+        await interaction.reply({
+            content: 'An error occurred while setting defense stat.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleClearInventory(interaction, targetUser, user) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can clear inventories.',
+            ephemeral: true
+        });
+    }
+
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const result = db.prepare('DELETE FROM user_items WHERE user_id = ?').run(user.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.error)
+            .setTitle('🗑️ Inventory Cleared')
+            .setDescription(`All items have been removed from ${targetUser.username}'s inventory`)
+            .addFields(
+                {
+                    name: 'Items Removed',
+                    value: result.changes.toString(),
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Inventory cleared by ${interaction.user.username}: ${targetUser.username} (${result.changes} items)`);
+    } catch (error) {
+        console.error('Error clearing inventory:', error);
+        await interaction.reply({
+            content: 'An error occurred while clearing inventory.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== QUEST MANAGEMENT ====================
+
+async function handleForceCompleteQuest(interaction, targetUser, user) {
+    const questId = interaction.options.getInteger('quest-id');
+
+    if (!user) {
+        return interaction.reply({
+            content: '❌ This user has no data in the system.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const quest = QuestModel.findById(questId);
+
+        if (!quest) {
+            return interaction.reply({
+                content: `❌ Quest with ID ${questId} not found.`,
+                ephemeral: true
+            });
+        }
+
+        // Check if user has this quest
+        const userQuest = db.prepare('SELECT * FROM user_quests WHERE user_id = ? AND quest_id = ?').get(user.id, questId);
+
+        if (!userQuest) {
+            return interaction.reply({
+                content: `❌ ${targetUser.username} does not have this quest assigned.`,
+                ephemeral: true
+            });
+        }
+
+        if (userQuest.completed) {
+            return interaction.reply({
+                content: `❌ This quest is already completed.`,
+                ephemeral: true
+            });
+        }
+
+        // Complete the quest
+        UserQuestModel.completeQuest(user.id, questId);
+        UserModel.updateCurrency(targetUser.id, quest.reward_currency);
+        UserModel.updateGems(targetUser.id, quest.reward_gems);
+        UserModel.incrementQuestCount(targetUser.id);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('✅ Quest Force Completed')
+            .setDescription(`Quest **${quest.quest_name}** has been force completed for ${targetUser.username}`)
+            .addFields(
+                {
+                    name: 'Rewards Given',
+                    value: `${quest.reward_currency} Dakari\n${quest.reward_gems} gems`,
+                    inline: true
+                },
+                {
+                    name: 'Staff Member',
+                    value: `${interaction.user.username} (${interaction.user.id})`
+                }
+            )
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Quest force completed by ${interaction.user.username}: ${quest.quest_name} for ${targetUser.username}`);
+    } catch (error) {
+        console.error('Error force completing quest:', error);
+        await interaction.reply({
+            content: 'An error occurred while completing the quest.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleRemoveQuest(interaction) {
+    if (!await isDeveloper(interaction)) {
+        return interaction.reply({
+            content: '❌ Only developers can remove quests.',
+            ephemeral: true
+        });
+    }
+
+    const questId = interaction.options.getInteger('quest-id');
+
+    try {
+        const quest = QuestModel.findById(questId);
+
+        if (!quest) {
+            return interaction.reply({
+                content: `❌ Quest with ID ${questId} not found.`,
+                ephemeral: true
+            });
+        }
+
+        // Delete quest and related user_quests entries
+        db.prepare('DELETE FROM user_quests WHERE quest_id = ?').run(questId);
+        db.prepare('DELETE FROM quests WHERE id = ?').run(questId);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.error)
+            .setTitle('🗑️ Quest Removed')
+            .setDescription(`Quest **${quest.quest_name}** (ID: ${questId}) has been removed from the database`)
+            .addFields({
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`
+            })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[ADMIN] Quest removed by ${interaction.user.username}: ${quest.quest_name} (ID: ${questId})`);
+    } catch (error) {
+        console.error('Error removing quest:', error);
+        await interaction.reply({
+            content: 'An error occurred while removing the quest.',
+            ephemeral: true
+        });
+    }
+}
+
+// ==================== HELP ====================
+
+async function handleHelp(interaction) {
+    const embed = createAdminHelpEmbed('overview');
+    const buttons = createAdminHelpButtons();
+
+    await interaction.reply({ embeds: [embed], components: buttons, ephemeral: true });
+}
+
+function createAdminHelpEmbed(category) {
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.primary)
+        .setTimestamp();
+
+    switch (category) {
+        case 'overview':
+            embed
+                .setTitle('📋 Admin Command Center')
+                .setDescription('**Welcome to the Admin Control Panel!**\n\nSelect a category below to view detailed commands.\n\n**Permission Levels:**\n🟢 **Staff** - Most admin commands\n🔴 **Developer** - Destructive/critical commands')
+                .addFields(
+                    {
+                        name: '👤 User Management',
+                        value: '10 commands for managing user data, stats, and inventory',
+                        inline: true
+                    },
+                    {
+                        name: '💀 Boss Management',
+                        value: '4 commands for controlling boss spawns and health',
+                        inline: true
+                    },
+                    {
+                        name: '📜 Quest Management',
+                        value: '5 commands for quest control and completion',
+                        inline: true
+                    },
+                    {
+                        name: '🚢 Travel Management',
+                        value: '2 commands for managing user travel',
+                        inline: true
+                    },
+                    {
+                        name: '⚔️ PVP Management',
+                        value: '2 commands for PVP system control',
+                        inline: true
+                    },
+                    {
+                        name: '🏰 Server Management',
+                        value: '2 commands for server opt-in control',
+                        inline: true
+                    },
+                    {
+                        name: '🔧 Command Management',
+                        value: '6 commands for disabling/restricting commands',
+                        inline: true
+                    },
+                    {
+                        name: '🎁 Other Commands',
+                        value: 'Items, leaderboard, and more',
+                        inline: true
+                    }
+                )
+                .setFooter({ text: 'Click a category button below to view detailed commands' });
+            break;
+
+        case 'user':
+            embed
+                .setTitle('👤 User Management Commands')
+                .setDescription('Manage user data, stats, currency, and inventory.')
+                .addFields(
+                    {
+                        name: '💰 Economy',
+                        value: '`/admin give-currency <user> <amount>`\nGive Dakari to a user\n\n`/admin give-gems <user> <amount>`\nGive gems to a user',
+                        inline: false
+                    },
+                    {
+                        name: '📊 Stats & Level',
+                        value: '`/admin set-level <user> <level>`\nSet user\'s level (1-200)\n\n`/admin heal-user <user>`\nRestore user to full health\n\n`/admin set-attack <user> <value>`\nSet base attack stat\n\n`/admin set-defense <user> <value>`\nSet base defense stat',
+                        inline: false
+                    },
+                    {
+                        name: '📦 Inventory & Items',
+                        value: '`/admin give-item <user> <item> [quantity]`\nGive items to user\n\n`/admin clear-inventory <user>` 🔴\nRemove all items from inventory',
+                        inline: false
+                    },
+                    {
+                        name: '🗑️ Data Management',
+                        value: '`/admin view-user <user>`\nView detailed user information\n\n`/admin reset-user <user>`\nReset progress to defaults\n\n`/admin wipe-user <user>` 🔴\nPermanently delete all user data',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: '🔴 = Developer only | Use the buttons to navigate categories' });
+            break;
+
+        case 'boss':
+            embed
+                .setTitle('💀 Boss Management Commands')
+                .setDescription('Control boss spawning, health, and participants.')
+                .addFields(
+                    {
+                        name: '🎲 Boss Spawning',
+                        value: '`/admin force-spawn-boss <server-id>`\nForce spawn a boss on a specific server\n\n`/admin clear-boss` 🔴\nRemove the active boss entirely',
+                        inline: false
+                    },
+                    {
+                        name: '⚙️ Boss Control',
+                        value: '`/admin set-boss-health <health>`\nModify current boss health\n\n`/admin view-boss-participants`\nView all participants and damage dealt',
+                        inline: false
+                    },
+                    {
+                        name: '💡 Tips',
+                        value: '• Boss notifications auto-update when health changes\n• Use `/boss despawn` to end boss gracefully\n• Clearing boss removes all participant data',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: '🔴 = Developer only | Use the buttons to navigate categories' });
+            break;
+
+        case 'quest':
+            embed
+                .setTitle('📜 Quest Management Commands')
+                .setDescription('Manage quests, completions, and resets.')
+                .addFields(
+                    {
+                        name: '✅ Quest Completion',
+                        value: '`/admin force-complete-quest <user> <quest-id>`\nForce complete a quest and give rewards',
+                        inline: false
+                    },
+                    {
+                        name: '🔄 Quest Resets',
+                        value: '`/admin reset-quests-user <user>`\nReset all quests for a user\n\n`/admin reset-quests-server <server-id>`\nReset quests for entire server\n\n`/admin reset-quests-global` 🔴\nReset ALL quests for everyone',
+                        inline: false
+                    },
+                    {
+                        name: '🗑️ Quest Removal',
+                        value: '`/admin remove-quest <quest-id>` 🔴\nPermanently delete a quest',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: '🔴 = Developer only | Use the buttons to navigate categories' });
+            break;
+
+        case 'travel':
+            embed
+                .setTitle('🚢 Travel Management Commands')
+                .setDescription('Control user travel and destinations.')
+                .addFields(
+                    {
+                        name: '🚫 Cancel Travel',
+                        value: '`/admin cancel-travel <user>`\nCancel user\'s active travel\n\n*User returns to their origin without completing the journey*',
+                        inline: false
+                    },
+                    {
+                        name: '⚡ Force Complete',
+                        value: '`/admin force-complete-travel <user>`\nInstantly complete user\'s travel\n\n*User arrives at destination immediately*',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: 'Use the buttons to navigate categories' });
+            break;
+
+        case 'pvp':
+            embed
+                .setTitle('⚔️ PVP Management Commands')
+                .setDescription('Manage PVP settings and statistics.')
+                .addFields(
+                    {
+                        name: '📊 PVP Stats',
+                        value: '`/admin reset-pvp-stats <user>`\nReset win/loss record to 0-0',
+                        inline: false
+                    },
+                    {
+                        name: '🎚️ PVP Toggle',
+                        value: '`/admin toggle-pvp-for-user <user>`\nEnable or disable PVP for a user\n\n*Useful for preventing harassment or during events*',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: 'Use the buttons to navigate categories' });
+            break;
+
+        case 'server':
+            embed
+                .setTitle('🏰 Server Management Commands')
+                .setDescription('Control server opt-in status for boss spawns.')
+                .addFields(
+                    {
+                        name: '✅ Force Opt-In',
+                        value: '`/admin force-optin-server <server-id>` 🔴\nForce enable boss spawns for a server\n\n*Creates server entry if doesn\'t exist*',
+                        inline: false
+                    },
+                    {
+                        name: '❌ Force Opt-Out',
+                        value: '`/admin force-optout-server <server-id>` 🔴\nForce disable boss spawns for a server',
+                        inline: false
+                    },
+                    {
+                        name: '💡 Info',
+                        value: 'Servers must be opted-in to receive boss spawns. Server owners normally control this via `/optin` and `/optout`.',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: '🔴 = Developer only | Use the buttons to navigate categories' });
+            break;
+
+        case 'commands':
+            embed
+                .setTitle('🔧 Command Management')
+                .setDescription('Control command availability and restrictions.')
+                .addFields(
+                    {
+                        name: '🚫 Disable/Enable Commands',
+                        value: '`/admin disable-command <command>` 🔴\nGlobally disable a command\n\n`/admin enable-command <command>` 🔴\nRe-enable a disabled command\n\n`/admin list-disabled`\nView all disabled commands',
+                        inline: false
+                    },
+                    {
+                        name: '🔒 Command Restrictions',
+                        value: '`/admin restrict-command <command> <user>` 🔴\nWhitelist user for command access\n\n`/admin unrestrict-command <command> [user]` 🔴\nRemove restrictions (or specific user)\n\n`/admin list-restrictions [command]`\nView command restrictions',
+                        inline: false
+                    },
+                    {
+                        name: '⚠️ Important',
+                        value: '• Cannot disable/restrict `/admin`\n• Staff can always use restricted commands\n• Once restricted, only whitelisted users + staff can use it',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: '🔴 = Developer only | Use the buttons to navigate categories' });
+            break;
+
+        case 'other':
+            embed
+                .setTitle('🎁 Other Admin Commands')
+                .setDescription('Additional management commands.')
+                .addFields(
+                    {
+                        name: '🏆 Leaderboard',
+                        value: '`/admin reset-leaderboard <user>`\nReset user\'s monthly leaderboard points',
+                        inline: false
+                    },
+                    {
+                        name: '🎁 Items',
+                        value: '`/admin give-item <user> <item> [quantity]`\nGive items to users with auto-equip',
+                        inline: false
+                    }
+                )
+                .setFooter({ text: 'Use the buttons to navigate categories' });
+            break;
+    }
+
+    return embed;
+}
+
+function createAdminHelpButtons(currentCategory = 'overview') {
+    const row1 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('admin_help_overview')
+                .setLabel('Overview')
+                .setStyle(currentCategory === 'overview' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('📋'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_user')
+                .setLabel('User')
+                .setStyle(currentCategory === 'user' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('👤'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_boss')
+                .setLabel('Boss')
+                .setStyle(currentCategory === 'boss' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('💀'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_quest')
+                .setLabel('Quest')
+                .setStyle(currentCategory === 'quest' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('📜')
+        );
+
+    const row2 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('admin_help_travel')
+                .setLabel('Travel')
+                .setStyle(currentCategory === 'travel' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('🚢'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_pvp')
+                .setLabel('PVP')
+                .setStyle(currentCategory === 'pvp' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('⚔️'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_server')
+                .setLabel('Server')
+                .setStyle(currentCategory === 'server' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('🏰'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_commands')
+                .setLabel('Commands')
+                .setStyle(currentCategory === 'commands' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('🔧'),
+            new ButtonBuilder()
+                .setCustomId('admin_help_other')
+                .setLabel('Other')
+                .setStyle(currentCategory === 'other' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                .setEmoji('🎁')
+        );
+
+    return [row1, row2];
+}
+
+// Export functions for button handler
+module.exports.createAdminHelpEmbed = createAdminHelpEmbed;
+module.exports.createAdminHelpButtons = createAdminHelpButtons;

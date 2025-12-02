@@ -1,14 +1,37 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { BossModel, BossParticipantModel } = require('../../database/models');
 const { BossManager } = require('../utils/bossManager');
+const { isStaff } = require('../utils/permissions');
 const config = require('../../../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('boss')
-        .setDescription('View the active boss status'),
+        .setDescription('View or manage the active boss')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('status')
+                .setDescription('View the active boss status')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('despawn')
+                .setDescription('Manually despawn the active boss (Staff only)')
+        ),
 
     async execute(interaction) {
+        const subcommand = interaction.options.getSubcommand();
+
+        if (subcommand === 'despawn') {
+            return handleDespawn(interaction);
+        }
+
+        // Default behavior (status)
+        return handleStatus(interaction);
+    }
+};
+
+async function handleStatus(interaction) {
         const boss = BossModel.getActiveBoss();
 
         if (!boss) {
@@ -61,5 +84,50 @@ module.exports = {
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
+}
+
+async function handleDespawn(interaction) {
+    // Check if user is staff
+    if (!await isStaff(interaction)) {
+        return interaction.reply({
+            content: 'This command is only available to QuestCord staff.',
+            ephemeral: true
+        });
     }
+
+    const boss = BossModel.getActiveBoss();
+
+    if (!boss) {
+        return interaction.reply({
+            content: 'There is no active boss to despawn.',
+            ephemeral: true
+        });
+    }
+
+    // Manually despawn the boss
+    await BossManager.announceBossDespawn(boss.id);
+
+    // Mark boss as expired in database
+    BossModel.cleanupExpired();
+
+    const embed = new EmbedBuilder()
+        .setColor(config.theme.colors.warning)
+        .setTitle('Boss Manually Despawned')
+        .setDescription(`**${boss.boss_name}** has been manually despawned by staff.`)
+        .addFields(
+            {
+                name: 'Boss Info',
+                value: `Type: ${boss.boss_type}\nRemaining HP: ${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()}`,
+                inline: false
+            },
+            {
+                name: 'Staff Member',
+                value: `${interaction.user.username} (${interaction.user.id})`,
+                inline: true
+            }
+        )
+        .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    console.log(`[BOSS] Boss manually despawned by ${interaction.user.username}: ${boss.boss_name} (ID: ${boss.id})`);
 };
