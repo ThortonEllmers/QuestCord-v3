@@ -1,6 +1,7 @@
 const { ActivityType } = require('discord.js');
 const { ServerModel, GlobalStatsModel, UserModel } = require('../../database/models');
 const { broadcastStats } = require('../../web/server');
+const { debugLogger } = require('../../utils/debugLogger');
 
 // List of commands to cycle through in rich presence
 const commands = [
@@ -24,6 +25,13 @@ module.exports = {
     once: true,
     async execute(client) {
         console.log(`Logged in as ${client.user.tag}`);
+
+        // Initialize debug logger
+        debugLogger.setClient(client);
+        await debugLogger.success('BOT', `Bot logged in as ${client.user.tag}`, {
+            guilds: client.guilds.cache.size,
+            users: client.users.cache.size
+        });
 
         // Set initial presence
         updatePresence(client);
@@ -92,13 +100,12 @@ async function updateUserDisplayNames(client) {
         const { db } = require('../../database/schema');
         const allUsers = db.prepare('SELECT discord_id, username FROM users').all();
 
-        // Iterate through guilds to find and update users
+        // Only update users that are already in the cache (don't fetch)
+        // This avoids rate limits by only updating users we already have cached
         for (const [guildId, guild] of client.guilds.cache) {
             try {
-                // Fetch all members for this guild
-                await guild.members.fetch();
-
-                // Update each user's display name
+                // Don't fetch all members - just use what's already cached
+                // Members will be updated naturally when they interact with the bot
                 for (const user of allUsers) {
                     const member = guild.members.cache.get(user.discord_id);
                     if (member) {
@@ -110,7 +117,7 @@ async function updateUserDisplayNames(client) {
                     }
                 }
             } catch (err) {
-                console.error(`Error fetching members for guild ${guild.name}:`, err);
+                console.error(`Error updating members for guild ${guild.name}:`, err);
             }
         }
 

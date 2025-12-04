@@ -2,6 +2,7 @@ const { BossModel, ServerModel, GlobalStatsModel } = require('../../database/mod
 const { getRandomBoss } = require('./questData');
 const { EmbedBuilder } = require('discord.js');
 const config = require('../../../config.json');
+const { debugLogger } = require('../../utils/debugLogger');
 
 class BossManager {
     static bossSpawnTimer = null;
@@ -55,7 +56,7 @@ class BossManager {
         console.log(`Next boss will spawn in approximately ${Math.round(delay / 60000)} minutes`);
     }
 
-    static spawnBoss() {
+    static async spawnBoss() {
         try {
             const servers = ServerModel.getOptedInServers();
             if (servers.length === 0) {
@@ -83,6 +84,14 @@ class BossManager {
             GlobalStatsModel.updateLastBossSpawn(now);
 
             console.log(`Boss spawned: ${bossTemplate.name} in server ${randomServer.name}`);
+
+            await debugLogger.success('BOSS', `Boss spawned: ${bossTemplate.name}`, {
+                bossId: result.lastInsertRowid,
+                bossName: bossTemplate.name,
+                server: randomServer.name,
+                serverId: randomServer.id,
+                health: bossTemplate.health
+            });
 
             this.announceBossSpawn(randomServer, bossTemplate, result.lastInsertRowid);
 
@@ -148,7 +157,7 @@ class BossManager {
                     },
                     {
                         name: '🚀 How to Travel',
-                        value: `Use \`/travel\` command in any QuestCord server to see available destinations and travel to **${server.name}**!`,
+                        value: `Use the \`/travel\` command with the QuestCord bot to see available destinations and travel to **${server.name}**!`,
                         inline: false
                     }
                 )
@@ -240,7 +249,7 @@ class BossManager {
                     },
                     {
                         name: '🚀 How to Travel',
-                        value: `Use \`/travel\` command in any QuestCord server to see available destinations and travel to **${server.name}**!`,
+                        value: `Use the \`/travel\` command with the QuestCord bot to see available destinations and travel to **${server.name}**!`,
                         inline: false
                     }
                 )
@@ -275,13 +284,13 @@ class BossManager {
 
             const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-            // Get top 5 participants
+            // Get top 3 participants
             const participants = BossParticipantModel.getParticipants(bossId);
-            const top5 = participants.slice(0, 5);
+            const top3 = participants.slice(0, 3);
 
             let leaderboardText = '';
-            top5.forEach((participant, index) => {
-                const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][index];
+            top3.forEach((participant, index) => {
+                const medal = ['🥇', '🥈', '🥉'][index];
                 const rewardMultiplier = index === 0 ? 1.5 : 1;
                 const currencyReward = Math.floor(boss.reward_currency * rewardMultiplier);
                 const gemReward = Math.floor(boss.reward_gems * rewardMultiplier);
@@ -290,6 +299,12 @@ class BossManager {
                 leaderboardText += `   └ Damage: ${participant.damage_dealt.toLocaleString()} | Rewards: ${currencyReward.toLocaleString()} coins, ${gemReward} gems\n`;
             });
 
+            // Add "and X more users" if there are more than 3 participants
+            if (participants.length > 3) {
+                const remainingCount = participants.length - 3;
+                leaderboardText += `\n+${remainingCount} more ${remainingCount === 1 ? 'user' : 'users'}`;
+            }
+
             const embed = new EmbedBuilder()
                 .setColor('#00FF00')
                 .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
@@ -297,7 +312,7 @@ class BossManager {
                 .setDescription(`⚔️ **${boss.boss_name} has been defeated!**\nThe realm is safe once again!`)
                 .addFields(
                     {
-                        name: '🏆 Top 5 Warriors',
+                        name: '🏆 Top 3 Warriors',
                         value: leaderboardText || 'No participants',
                         inline: false
                     },
@@ -339,8 +354,17 @@ class BossManager {
             const message = await channel.messages.fetch(boss.announcement_message_id);
             if (!message) return;
 
-            const { ServerModel: SM } = require('../../database/models');
+            const { ServerModel: SM, BossParticipantModel } = require('../../database/models');
             const server = SM.findByDiscordId(boss.server_id);
+            const participants = BossParticipantModel.getParticipants(bossId);
+
+            await debugLogger.warn('BOSS', `Boss despawned: ${boss.boss_name}`, {
+                bossId: boss.id,
+                bossName: boss.boss_name,
+                healthRemaining: boss.health,
+                totalParticipants: participants.length,
+                server: server ? server.name : 'Unknown'
+            });
             if (!server) return;
 
             const guild = this.client.guilds.cache.get(server.discord_id);
@@ -348,25 +372,57 @@ class BossManager {
 
             const serverIcon = guild.iconURL({ size: 256, extension: 'png' }) || 'https://cdn.discordapp.com/embed/avatars/0.png';
 
+            // Get top 3 participants who fought but failed to defeat the boss
+            const top3 = participants.slice(0, 3);
+
+            const healthPercent = Math.round((boss.health / boss.max_health) * 100);
+
+            let leaderboardText = '';
+            if (top3.length > 0) {
+                top3.forEach((participant, index) => {
+                    const medal = ['🥇', '🥈', '🥉'][index];
+                    leaderboardText += `${medal} **${participant.username}**\n`;
+                    leaderboardText += `   └ Damage Dealt: ${participant.damage_dealt.toLocaleString()} (${participant.attacks} attacks)\n`;
+                });
+
+                // Add "and X more users" if there are more than 3 participants
+                if (participants.length > 3) {
+                    const remainingCount = participants.length - 3;
+                    leaderboardText += `\n+${remainingCount} more ${remainingCount === 1 ? 'user' : 'users'}`;
+                }
+            } else {
+                leaderboardText = 'No one fought this boss';
+            }
+
             const embed = new EmbedBuilder()
                 .setColor('#FF0000')
                 .setAuthor({ name: '╭───𒌋𒀖 「🜲・Boss Notification」' })
-                .setTitle(`⏰ BOSS DESPAWNED`)
+                .setTitle(`⏰ BOSS DESPAWNED!`)
                 .setDescription(`💨 **${boss.boss_name} has despawned!**\nThe boss escaped as time ran out!`)
                 .addFields(
+                    {
+                        name: '⚔️ Top 3 Fighters',
+                        value: leaderboardText,
+                        inline: false
+                    },
+                    {
+                        name: '💀 Boss Status',
+                        value: `HP: ${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()} (${healthPercent}% remaining)`,
+                        inline: false
+                    },
                     {
                         name: '📍 Location',
                         value: `**${server.name}**`,
                         inline: true
                     },
                     {
-                        name: '❌ Reason',
-                        value: 'Time expired',
+                        name: '👥 Total Fighters',
+                        value: `${participants.length}`,
                         inline: true
                     },
                     {
-                        name: '💀 Remaining HP',
-                        value: `${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()}`,
+                        name: '❌ Reason',
+                        value: 'Time expired',
                         inline: true
                     }
                 )
@@ -382,10 +438,10 @@ class BossManager {
     }
 
     static startNotificationUpdater() {
-        // Update boss notification every 10 minutes
+        // Update boss notification every minute for more accurate time display
         setInterval(() => {
             this.updateBossNotification();
-        }, 10 * 60 * 1000); // 10 minutes in milliseconds
+        }, 60 * 1000); // 1 minute in milliseconds
 
         console.log('Boss notification updater started');
     }

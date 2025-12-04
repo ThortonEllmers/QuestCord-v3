@@ -34,7 +34,8 @@ async function handlePvpAccept(interaction, challengeKey, activeChallenges, aren
     const challengerStats = await getPlayerStats(challenger);
     const opponentStats = await getPlayerStats(opponent);
 
-    // Create battle
+    // Create battle - Randomly decide who goes first for fairness
+    const randomFirst = Math.random() < 0.5 ? 'challenger' : 'opponent';
     const battleId = `${challenge.challenger.id}_${challenge.opponent.id}_${Date.now()}`;
     arenaeBattles.set(battleId, {
         id: battleId,
@@ -58,9 +59,9 @@ async function handlePvpAccept(interaction, challengeKey, activeChallenges, aren
             defense: opponentStats.defense,
             crit: opponentStats.crit
         },
-        turn: 'challenger', // challenger goes first
+        turn: randomFirst, // Randomly decide who goes first
         round: 1,
-        log: []
+        log: [`**${randomFirst === 'challenger' ? challenge.challenger.username : challenge.opponent.username}** won the coin toss and goes first!`]
     });
 
     // Show arena start
@@ -116,13 +117,16 @@ async function handlePvpAttack(interaction, battleId, arenaeBattles) {
         });
     }
 
-    // Calculate damage
+    // Calculate damage with randomization for more balanced battles
     const attacker = currentTurn;
     const defender = battle.turn === 'challenger' ? battle.opponent : battle.challenger;
 
     // Check for crit
     const isCrit = Math.random() * 100 < attacker.crit;
-    const baseDamage = attacker.attack;
+
+    // Add randomization to base damage (±25% variance)
+    const randomFactor = 0.75 + (Math.random() * 0.5); // Random between 0.75 and 1.25
+    const baseDamage = Math.floor(attacker.attack * randomFactor);
     const damageReduction = Math.floor(defender.defense * 0.5); // Defense reduces damage by 50% of defense value
     let damage = Math.max(1, baseDamage - damageReduction);
 

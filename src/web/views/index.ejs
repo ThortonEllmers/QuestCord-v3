@@ -15,9 +15,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="<%= websiteEffects.performanceMode ? 'performance-mode' : '' %> <%= !websiteEffects.effects.backgroundAnimations ? 'no-bg-animations' : '' %> <%= !websiteEffects.effects.cardHoverEffects ? 'no-card-effects' : '' %> <%= !websiteEffects.effects.cosmicParticles ? 'no-particles' : '' %> <%= !websiteEffects.effects.auroraEffect ? 'no-aurora' : '' %> <%= !websiteEffects.effects.gradientAnimations ? 'no-gradients' : '' %>">
+<body class="<%= websiteEffects && websiteEffects.performanceMode ? 'performance-mode' : '' %> <%= websiteEffects && websiteEffects.effects && !websiteEffects.effects.backgroundAnimations ? 'no-bg-animations' : '' %> <%= websiteEffects && websiteEffects.effects && !websiteEffects.effects.cardHoverEffects ? 'no-card-effects' : '' %> <%= websiteEffects && websiteEffects.effects && !websiteEffects.effects.cosmicParticles ? 'no-particles' : '' %> <%= websiteEffects && websiteEffects.effects && !websiteEffects.effects.auroraEffect ? 'no-aurora' : '' %> <%= websiteEffects && websiteEffects.effects && !websiteEffects.effects.gradientAnimations ? 'no-gradients' : '' %>">
     <!-- Cosmic Particles Effect -->
-    <% if (websiteEffects.effects.cosmicParticles) { %>
+    <% if (websiteEffects && websiteEffects.effects && websiteEffects.effects.cosmicParticles) { %>
     <div class="cosmic-particles"></div>
     <% } %>
 
@@ -244,9 +244,13 @@
             window.scrollTo({ top: 0, behavior: 'instant' });
         })();
 
-        // NPC Card explosion effect
-        <% if (websiteEffects.interactiveFeatures.chaosMode) { %>
+        // Interactive features setup
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Setting up interactive features...', <%- JSON.stringify(websiteEffects) %>);
+
+            // NPC Card explosion effect
+            <% if (websiteEffects && websiteEffects.interactiveFeatures && websiteEffects.interactiveFeatures.chaosMode) { %>
+            console.log('Chaos Mode enabled, setting up NPC card...');
             const npcCard = document.querySelector('.npc-card[data-user-id="245784383506743296"]');
 
             if (npcCard) {
@@ -335,11 +339,11 @@
                     }, 500); // Wait for shake to finish
                 });
             }
-        });
-        <% } %>
+            <% } %>
 
             // CRAZY PARTY MODE for user profile (576244740199284779)
-            <% if (websiteEffects.interactiveFeatures.partyMode) { %>
+            <% if (websiteEffects && websiteEffects.interactiveFeatures && websiteEffects.interactiveFeatures.partyMode) { %>
+            console.log('Party Mode enabled, setting up user card...');
             const userCard = document.querySelector('.staff-card[data-user-id="576244740199284779"]');
             if (userCard) {
                 userCard.style.cursor = 'pointer';
@@ -414,7 +418,8 @@
             <% } %>
 
             // INSULT DISPLAY for developer (works with staff section)
-            <% if (websiteEffects.interactiveFeatures.insultDisplay) { %>
+            <% if (websiteEffects && websiteEffects.interactiveFeatures && websiteEffects.interactiveFeatures.insultDisplay) { %>
+            console.log('Insult Display enabled, setting up developer card...');
             // Find the staff card by data-user-id attribute in the staff section
             const developerCards = document.querySelectorAll('.staff-section .staff-card');
             let isInsultLoading = false;
@@ -553,7 +558,7 @@
             <% } %>
 
             // CRAZY PARTY MODE for other CUB cards (excluding ID 378501056008683530)
-            <% if (websiteEffects.interactiveFeatures.partyMode) { %>
+            <% if (websiteEffects && websiteEffects.interactiveFeatures && websiteEffects.interactiveFeatures.partyMode) { %>
             const cubCards = document.querySelectorAll('.staff-card');
             cubCards.forEach(card => {
                 const username = card.querySelector('.staff-name');
@@ -632,11 +637,109 @@
             });
             <% } %>
 
+            // RANK BADGE CLICK EFFECTS (Always enabled by default)
+            <% if (websiteEffects && websiteEffects.interactiveFeatures && websiteEffects.interactiveFeatures.partyMode) { %>
+            const rankBadges = document.querySelectorAll('.rank-badge');
+            rankBadges.forEach((badge, badgeIndex) => {
+                badge.style.cursor = 'pointer';
+                badge.addEventListener('click', function(e) {
+                    e.stopPropagation();
+
+                    // Create explosion effect
+                    const rect = badge.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    // Spawn medal particles
+                    const colors = ['#FFD700', '#C0C0C0', '#CD7F32']; // Gold, Silver, Bronze
+                    const color = colors[badgeIndex] || '#FFD700';
+
+                    for (let i = 0; i < 30; i++) {
+                        setTimeout(() => {
+                            const particle = document.createElement('div');
+                            particle.textContent = badge.textContent;
+                            particle.style.cssText = `
+                                position: fixed;
+                                left: ${centerX}px;
+                                top: ${centerY}px;
+                                font-size: 24px;
+                                pointer-events: none;
+                                z-index: 9999;
+                                animation: medal-explode ${1 + Math.random()}s ease-out forwards;
+                            `;
+
+                            const angle = (Math.PI * 2 * i) / 30;
+                            const distance = 100 + Math.random() * 100;
+                            particle.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+                            particle.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+                            particle.style.setProperty('--rotation', Math.random() * 720 - 360 + 'deg');
+
+                            document.body.appendChild(particle);
+                            setTimeout(() => particle.remove(), 1500);
+                        }, i * 10);
+                    }
+
+                    // Badge bounce animation
+                    badge.style.animation = 'badge-bounce 0.5s ease-out';
+                    setTimeout(() => badge.style.animation = '', 500);
+
+                    // Add sparkle effect
+                    const sparkle = document.createElement('div');
+                    sparkle.innerHTML = '✨';
+                    sparkle.style.cssText = `
+                        position: fixed;
+                        left: ${centerX}px;
+                        top: ${centerY}px;
+                        font-size: 48px;
+                        pointer-events: none;
+                        z-index: 9999;
+                        animation: sparkle-fade 1s ease-out forwards;
+                        transform: translate(-50%, -50%);
+                    `;
+                    document.body.appendChild(sparkle);
+                    setTimeout(() => sparkle.remove(), 1000);
+                });
+            });
+            <% } %>
+
             // Zigzag scroll path (disabled for better UX)
             // The scroll path feature has been disabled to improve scrolling performance
             // and remove the distracting X marker
         });
     </script>
+
+    <!-- Rank Badge Effects CSS -->
+    <style>
+        @keyframes medal-explode {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(
+                    calc(-50% + var(--tx)),
+                    calc(-50% + var(--ty))
+                ) scale(0.5) rotate(var(--rotation));
+            }
+        }
+
+        @keyframes badge-bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.5) rotate(10deg); }
+        }
+
+        @keyframes sparkle-fade {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(3);
+            }
+        }
+    </style>
 
     <!-- Party Mode CSS -->
     <style>

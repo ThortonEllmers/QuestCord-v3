@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { GlobalStatsModel, LeaderboardModel, StaffModel } = require('../../database/models');
+const { GlobalStatsModel, LeaderboardModel, StaffModel, WebsiteSettingsModel } = require('../../database/models');
 const config = require('../../../config.json');
 const insults = require('../../../config/insults.json');
-const websiteEffects = require('../../../config/website-effects.json');
+const { debugLogger } = require('../../utils/debugLogger');
 
 // Simple in-memory rate limiter for insults
 const insultRateLimits = new Map();
@@ -149,6 +149,30 @@ router.get('/', async (req, res) => {
                 }
             }
         }
+
+        // Get website settings from database with fallback to all enabled by default
+        const websiteSettings = WebsiteSettingsModel.get();
+        const websiteEffects = {
+            effects: {
+                backgroundAnimations: websiteSettings ? websiteSettings.background_animations === 1 : true,
+                cardHoverEffects: websiteSettings ? websiteSettings.card_hover_effects === 1 : true,
+                cosmicParticles: websiteSettings ? websiteSettings.cosmic_particles === 1 : true,
+                auroraEffect: websiteSettings ? websiteSettings.aurora_effect === 1 : true,
+                gradientAnimations: websiteSettings ? websiteSettings.gradient_animations === 1 : true
+            },
+            interactiveFeatures: {
+                partyMode: websiteSettings ? websiteSettings.party_mode === 1 : true,
+                insultDisplay: websiteSettings ? websiteSettings.insult_display === 1 : true,
+                chaosMode: websiteSettings ? websiteSettings.chaos_mode === 1 : true
+            },
+            performanceMode: websiteSettings ? websiteSettings.performance_mode === 1 : false
+        };
+
+        // Debug log website effects
+        debugLogger.info('WEBSITE', 'Website effects configuration', {
+            websiteSettings: websiteSettings || 'null (using defaults)',
+            websiteEffects
+        });
 
         res.render('index', {
             stats: enhancedStats,

@@ -35,8 +35,10 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
     try {
         console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
+        // Deploy to guild for instant updates (use applicationCommands for global)
+        const guildId = '1404523107544469545';
         const data = await rest.put(
-            Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
+            Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, guildId),
             { body: commands },
         );
 

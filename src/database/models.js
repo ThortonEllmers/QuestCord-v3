@@ -17,6 +17,11 @@ class UserModel {
         return stmt.get(discordId);
     }
 
+    static findById(userId) {
+        const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+        return stmt.get(userId);
+    }
+
     static updateCurrency(discordId, amount) {
         const stmt = db.prepare('UPDATE users SET currency = currency + ?, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(amount, discordId);
@@ -28,7 +33,12 @@ class UserModel {
     }
 
     static incrementQuestCount(discordId) {
-        const stmt = db.prepare('UPDATE users SET total_quests = total_quests + 1, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        const stmt = db.prepare('UPDATE users SET total_quests = total_quests + 1, quests_completed = quests_completed + 1, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
+        return stmt.run(discordId);
+    }
+
+    static incrementBossesDefeated(discordId) {
+        const stmt = db.prepare('UPDATE users SET bosses_defeated = bosses_defeated + 1, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(discordId);
     }
 
@@ -159,6 +169,15 @@ class UserQuestModel {
         const stmt = db.prepare(`
             UPDATE user_quests
             SET completed = 1, completed_at = strftime('%s', 'now')
+            WHERE user_id = ? AND quest_id = ?
+        `);
+        return stmt.run(userId, questId);
+    }
+
+    static failQuest(userId, questId) {
+        const stmt = db.prepare(`
+            UPDATE user_quests
+            SET failed = 1
             WHERE user_id = ? AND quest_id = ?
         `);
         return stmt.run(userId, questId);
@@ -619,6 +638,25 @@ class EquipmentModel {
     }
 }
 
+class WebsiteSettingsModel {
+    static get() {
+        const stmt = db.prepare('SELECT * FROM website_settings WHERE id = 1');
+        return stmt.get();
+    }
+
+    static update(settings) {
+        const fields = Object.keys(settings).map(key => `${key} = ?`).join(', ');
+        const values = Object.values(settings);
+        const stmt = db.prepare(`UPDATE website_settings SET ${fields}, updated_at = strftime('%s', 'now') WHERE id = 1`);
+        return stmt.run(...values);
+    }
+
+    static toggle(setting) {
+        const stmt = db.prepare(`UPDATE website_settings SET ${setting} = NOT ${setting}, updated_at = strftime('%s', 'now') WHERE id = 1`);
+        return stmt.run();
+    }
+}
+
 class PVPModel {
     static togglePVP(discordId, enabled) {
         const stmt = db.prepare('UPDATE users SET pvp_enabled = ?, updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
@@ -691,5 +729,6 @@ module.exports = {
     UserItemModel,
     BannedIPModel,
     EquipmentModel,
-    PVPModel
+    PVPModel,
+    WebsiteSettingsModel
 };

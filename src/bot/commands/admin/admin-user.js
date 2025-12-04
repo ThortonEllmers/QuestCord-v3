@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { UserModel } = require('../../../database/models');
+const { UserModel, UserQuestModel, BossParticipantModel, LeaderboardModel, UserItemModel } = require('../../../database/models');
 const { isStaff, isDeveloper } = require('../../utils/permissions');
+const { LevelSystem } = require('../../../utils/levelSystem');
+const { autoEquipItem } = require('../../../utils/equipmentHelper');
 const config = require('../../../../config.json');
 const { db } = require('../../../database/schema');
 

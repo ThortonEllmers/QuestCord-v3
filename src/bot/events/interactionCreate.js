@@ -7,6 +7,7 @@ const { handlePvpAccept, handlePvpDecline, handlePvpAttack } = require('../utils
 const { isStaff } = require('../utils/permissions');
 const { db } = require('../../database/schema');
 const { MessageFlags } = require('discord.js');
+const { debugLogger } = require('../../utils/debugLogger');
 
 module.exports = {
     name: 'interactionCreate',
@@ -291,6 +292,15 @@ module.exports = {
             await command.execute(interaction);
         } catch (error) {
             console.error(`Error executing command ${interaction.commandName}:`, error);
+
+            // Log to debug channel
+            await debugLogger.error('COMMAND', error, {
+                command: interaction.commandName,
+                user: interaction.user.tag,
+                userId: interaction.user.id,
+                guild: interaction.guild?.name || 'DM',
+                guildId: interaction.guild?.id || null
+            });
 
             // Report error to Discord channel
             const reporting = getReportingInstance();

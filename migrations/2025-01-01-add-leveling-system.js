@@ -2,11 +2,19 @@
 
 module.exports = {
     up: (db) => {
-        db.exec(`
-            ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1;
-            ALTER TABLE users ADD COLUMN experience INTEGER DEFAULT 0;
-            ALTER TABLE users ADD COLUMN total_experience INTEGER DEFAULT 0;
-        `);
+        // Check if columns exist before adding them
+        const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+        const columnNames = tableInfo.map(col => col.name);
+
+        if (!columnNames.includes('level')) {
+            db.exec('ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1');
+        }
+        if (!columnNames.includes('experience')) {
+            db.exec('ALTER TABLE users ADD COLUMN experience INTEGER DEFAULT 0');
+        }
+        if (!columnNames.includes('total_experience')) {
+            db.exec('ALTER TABLE users ADD COLUMN total_experience INTEGER DEFAULT 0');
+        }
     },
 
     down: (db) => {

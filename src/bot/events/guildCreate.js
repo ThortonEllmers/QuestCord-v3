@@ -1,4 +1,5 @@
 const { ServerModel, GlobalStatsModel } = require('../../database/models');
+const { debugLogger } = require('../../utils/debugLogger');
 
 module.exports = {
     name: 'guildCreate',
@@ -9,5 +10,12 @@ module.exports = {
 
         const totalServers = guild.client.guilds.cache.size;
         GlobalStatsModel.updateServerCount(totalServers);
+
+        await debugLogger.success('GUILD', `Joined new server: ${guild.name}`, {
+            serverId: guild.id,
+            serverName: guild.name,
+            memberCount: guild.memberCount,
+            totalServers: totalServers
+        });
     }
 };

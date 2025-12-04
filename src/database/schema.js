@@ -37,8 +37,23 @@ function initializeDatabase() {
             travel_destination TEXT,
             travel_arrives_at INTEGER DEFAULT 0,
             last_travel_time INTEGER DEFAULT 0,
+            equipped_weapon INTEGER,
+            equipped_helmet INTEGER,
+            equipped_chest INTEGER,
+            equipped_legs INTEGER,
+            equipped_boots INTEGER,
+            in_combat INTEGER DEFAULT 0,
+            total_pvp_wins INTEGER DEFAULT 0,
+            total_pvp_losses INTEGER DEFAULT 0,
+            quests_completed INTEGER DEFAULT 0,
+            bosses_defeated INTEGER DEFAULT 0,
             created_at INTEGER DEFAULT (strftime('%s', 'now')),
-            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+            updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+            FOREIGN KEY (equipped_weapon) REFERENCES items(id),
+            FOREIGN KEY (equipped_helmet) REFERENCES items(id),
+            FOREIGN KEY (equipped_chest) REFERENCES items(id),
+            FOREIGN KEY (equipped_legs) REFERENCES items(id),
+            FOREIGN KEY (equipped_boots) REFERENCES items(id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
@@ -220,6 +235,54 @@ function initializeDatabase() {
 
         CREATE INDEX IF NOT EXISTS idx_command_whitelist_command ON command_whitelist(command_name);
         CREATE INDEX IF NOT EXISTS idx_command_whitelist_user ON command_whitelist(discord_id);
+
+        CREATE TABLE IF NOT EXISTS pvp_matches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            challenger_id INTEGER NOT NULL,
+            opponent_id INTEGER NOT NULL,
+            winner_id INTEGER,
+            challenger_damage INTEGER DEFAULT 0,
+            opponent_damage INTEGER DEFAULT 0,
+            currency_won INTEGER DEFAULT 0,
+            completed INTEGER DEFAULT 0,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            completed_at INTEGER,
+            FOREIGN KEY (challenger_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (opponent_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_challenger ON pvp_matches(challenger_id);
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_opponent ON pvp_matches(opponent_id);
+
+        CREATE TABLE IF NOT EXISTS banned_ips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_address TEXT UNIQUE NOT NULL,
+            reason TEXT NOT NULL,
+            banned_by TEXT NOT NULL,
+            banned_by_id TEXT NOT NULL,
+            permanent INTEGER DEFAULT 1,
+            expires_at INTEGER,
+            banned_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_banned_ips_address ON banned_ips(ip_address);
+
+        CREATE TABLE IF NOT EXISTS website_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            card_hover_effects INTEGER DEFAULT 1,
+            background_animations INTEGER DEFAULT 1,
+            cosmic_particles INTEGER DEFAULT 1,
+            aurora_effect INTEGER DEFAULT 1,
+            gradient_animations INTEGER DEFAULT 1,
+            party_mode INTEGER DEFAULT 1,
+            insult_display INTEGER DEFAULT 1,
+            chaos_mode INTEGER DEFAULT 1,
+            performance_mode INTEGER DEFAULT 0,
+            updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );
+
+        INSERT OR IGNORE INTO website_settings (id) VALUES (1);
     `);
 
     // Migrations
@@ -360,6 +423,42 @@ function initializeDatabase() {
         db.exec('ALTER TABLE bosses ADD COLUMN announcement_channel_id TEXT');
         console.log('Migration completed: announcement_channel_id added');
     }
+
+    // Migration: Add equipment slots to users table
+    const equipmentColumns = [
+        { name: 'equipped_weapon', type: 'INTEGER' },
+        { name: 'equipped_helmet', type: 'INTEGER' },
+        { name: 'equipped_chest', type: 'INTEGER' },
+        { name: 'equipped_legs', type: 'INTEGER' },
+        { name: 'equipped_boots', type: 'INTEGER' }
+    ];
+
+    equipmentColumns.forEach(column => {
+        const hasColumn = userTableInfo.some(col => col.name === column.name);
+        if (!hasColumn) {
+            console.log(`Running migration: Adding ${column.name} to users...`);
+            db.exec(`ALTER TABLE users ADD COLUMN ${column.name} ${column.type}`);
+            console.log(`Migration completed: ${column.name} added`);
+        }
+    });
+
+    // Migration: Add PVP stats columns to users table
+    const pvpStatsColumns = [
+        { name: 'in_combat', type: 'INTEGER DEFAULT 0' },
+        { name: 'total_pvp_wins', type: 'INTEGER DEFAULT 0' },
+        { name: 'total_pvp_losses', type: 'INTEGER DEFAULT 0' },
+        { name: 'quests_completed', type: 'INTEGER DEFAULT 0' },
+        { name: 'bosses_defeated', type: 'INTEGER DEFAULT 0' }
+    ];
+
+    pvpStatsColumns.forEach(column => {
+        const hasColumn = userTableInfo.some(col => col.name === column.name);
+        if (!hasColumn) {
+            console.log(`Running migration: Adding ${column.name} to users...`);
+            db.exec(`ALTER TABLE users ADD COLUMN ${column.name} ${column.type}`);
+            console.log(`Migration completed: ${column.name} added`);
+        }
+    });
 
     console.log('Database initialized successfully');
 

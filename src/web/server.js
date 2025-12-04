@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const config = require('../../config.json');
 const { updateStaffRoles } = require('./middleware/auth');
 const { checkIPBan, getClientIP, calculateThreatLevel } = require('./middleware/ipBan');
+const { debugLogger } = require('../utils/debugLogger');
 
 let io = null;
 let discordClient = null;
@@ -41,9 +42,16 @@ async function startWebServer(client) {
     app.use(checkIPBan);
 
     const limiter = rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 100,
-        keyGenerator: (req) => getClientIP(req)
+        windowMs: 1 * 60 * 1000, // 1 minute window
+        max: 500, // 500 requests per minute (allows normal browsing + multiple page loads)
+        keyGenerator: (req) => getClientIP(req),
+        skip: (req) => {
+            // Skip rate limiting for static assets to prevent blocking CSS/JS/images
+            return req.path.startsWith('/css/') ||
+                   req.path.startsWith('/js/') ||
+                   req.path.startsWith('/images/') ||
+                   req.path.startsWith('/fonts/');
+        }
     });
     app.use(limiter);
 
@@ -83,11 +91,21 @@ async function startWebServer(client) {
         });
     });
 
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, req) => {
+        const clientIp = getClientIP(req);
         console.log('New WebSocket connection');
+
+        debugLogger.info('WEBSOCKET', 'New WebSocket connection established', {
+            ip: clientIp,
+            connectedClients: wss.clients.size
+        });
 
         ws.on('close', () => {
             console.log('WebSocket connection closed');
+            debugLogger.info('WEBSOCKET', 'WebSocket connection closed', {
+                ip: clientIp,
+                connectedClients: wss.clients.size
+            });
         });
     });
 
@@ -97,11 +115,18 @@ async function startWebServer(client) {
     const port = process.env.NODE_ENV === 'production' ? config.productionPort : config.port;
     const host = '0.0.0.0'; // Bind to all network interfaces
 
-    server.listen(port, host, () => {
+    server.listen(port, host, async () => {
         console.log(`[WEB SERVER] Successfully started`);
         console.log(`[WEB SERVER] Listening on ${host}:${port}`);
         console.log(`[WEB SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
         console.log(`[WEB SERVER] Access at: http://localhost:${port}`);
+
+        await debugLogger.success('WEB SERVER', `Web server started on ${host}:${port}`, {
+            host: host,
+            port: port,
+            environment: process.env.NODE_ENV || 'development',
+            url: `http://localhost:${port}`
+        });
     });
 
     server.on('error', (error) => {
@@ -157,8 +182,18 @@ function broadcastStaff(staff) {
     });
 }
 
+function broadcastWebsiteSettings(settings) {
+    if (!io) return;
+
+    io.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'website_settings', data: settings }));
+        }
+    });
+}
+
 function getDiscordClient() {
     return discordClient;
 }
 
-module.exports = { startWebServer, broadcastActivity, broadcastStats, broadcastLeaderboard, broadcastStaff, getDiscordClient };
+module.exports = { startWebServer, broadcastActivity, broadcastStats, broadcastLeaderboard, broadcastStaff, broadcastWebsiteSettings, getDiscordClient };

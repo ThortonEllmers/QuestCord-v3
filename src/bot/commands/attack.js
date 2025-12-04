@@ -3,6 +3,7 @@ const { BossModel, BossParticipantModel, UserModel, LeaderboardModel } = require
 const { BossManager } = require('../utils/bossManager');
 const { LevelSystem } = require('../../utils/levelSystem');
 const config = require('../../../config.json');
+const { debugLogger } = require('../../utils/debugLogger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -74,6 +75,15 @@ module.exports = {
 
             const participants = BossParticipantModel.getParticipants(boss.id);
             const topDealer = BossParticipantModel.getTopDamageDealer(boss.id);
+
+            await debugLogger.success('BOSS', `Boss defeated: ${boss.boss_name}`, {
+                bossId: boss.id,
+                bossName: boss.boss_name,
+                totalParticipants: participants.length,
+                topDealer: topDealer ? topDealer.username : 'Unknown',
+                finalDamage: damage,
+                defeatedBy: interaction.user.username
+            });
             const bossExp = LevelSystem.getBossExperience(boss.max_health);
 
             for (const participant of participants) {
@@ -84,6 +94,7 @@ module.exports = {
 
                 UserModel.updateCurrency(participant.discord_id, currencyReward);
                 UserModel.updateGems(participant.discord_id, gemReward);
+                UserModel.incrementBossesDefeated(participant.discord_id);
 
                 const participantUser = UserModel.findByDiscordId(participant.discord_id);
                 if (participantUser) {
