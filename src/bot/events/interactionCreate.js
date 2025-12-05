@@ -80,6 +80,142 @@ module.exports = {
                     await interaction.update({ embeds: [embed], components: buttons });
                     return;
                 }
+                // Website feature toggle buttons
+                if (interaction.customId.startsWith('website_toggle_')) {
+                    // Check if user is staff
+                    if (!await isStaff(interaction)) {
+                        return interaction.reply({
+                            content: '❌ This action is only available to QuestCord staff.',
+                            ephemeral: true
+                        });
+                    }
+
+                    const featureName = interaction.customId.replace('website_toggle_', '');
+                    const { WebsiteSettingsModel } = require('../../database/models');
+                    const settings = WebsiteSettingsModel.get();
+
+                    // Toggle the feature
+                    const currentValue = settings[featureName];
+                    const newValue = currentValue === 1 ? 0 : 1;
+
+                    const updateSettings = {};
+                    updateSettings[featureName] = newValue;
+                    WebsiteSettingsModel.update(updateSettings);
+
+                    // Broadcast updated settings to all connected clients
+                    const { broadcastWebsiteSettings } = require('../../web/server');
+                    const updatedSettings = WebsiteSettingsModel.get();
+                    broadcastWebsiteSettings({
+                        effects: {
+                            backgroundAnimations: updatedSettings.background_animations === 1,
+                            cardHoverEffects: updatedSettings.card_hover_effects === 1,
+                            cosmicParticles: updatedSettings.cosmic_particles === 1,
+                            auroraEffect: updatedSettings.aurora_effect === 1,
+                            gradientAnimations: updatedSettings.gradient_animations === 1
+                        },
+                        interactiveFeatures: {
+                            partyMode: updatedSettings.party_mode === 1,
+                            insultDisplay: updatedSettings.insult_display === 1,
+                            chaosMode: updatedSettings.chaos_mode === 1
+                        },
+                        performanceMode: updatedSettings.performance_mode === 1
+                    });
+
+                    const prettyName = featureName.split('_').map(word =>
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ');
+
+                    // Update the embed with new status
+                    const formatStatus = (value) => value ? '🟢 Enabled' : '🔴 Disabled';
+                    const { EmbedBuilder } = require('discord.js');
+
+                    const embed = new EmbedBuilder()
+                        .setColor(config.theme.colors.primary)
+                        .setTitle('🌐 Website Feature Status')
+                        .setDescription('Current status of all website features')
+                        .addFields(
+                            {
+                                name: '🎨 Visual Effects',
+                                value: `Card Hover Effects: ${formatStatus(updatedSettings.card_hover_effects)}\nBackground Animations: ${formatStatus(updatedSettings.background_animations)}\nCosmic Particles: ${formatStatus(updatedSettings.cosmic_particles)}\nAurora Effect: ${formatStatus(updatedSettings.aurora_effect)}\nGradient Animations: ${formatStatus(updatedSettings.gradient_animations)}`,
+                                inline: false
+                            },
+                            {
+                                name: '✨ Interactive Features',
+                                value: `Party Mode: ${formatStatus(updatedSettings.party_mode)}\nInsult Display: ${formatStatus(updatedSettings.insult_display)}\nChaos Mode: ${formatStatus(updatedSettings.chaos_mode)}`,
+                                inline: false
+                            },
+                            {
+                                name: '⚡ Performance',
+                                value: `Performance Mode: ${formatStatus(updatedSettings.performance_mode)}`,
+                                inline: false
+                            }
+                        )
+                        .setFooter({ text: `${prettyName} ${newValue === 1 ? 'enabled' : 'disabled'} • Click buttons below to toggle features` })
+                        .setTimestamp();
+
+                    // Re-create toggle buttons
+                    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+                    const row1 = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_card_hover_effects')
+                                .setLabel('Card Hover')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_background_animations')
+                                .setLabel('Background')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_cosmic_particles')
+                                .setLabel('Particles')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_aurora_effect')
+                                .setLabel('Aurora')
+                                .setStyle(ButtonStyle.Primary)
+                        );
+
+                    const row2 = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_gradient_animations')
+                                .setLabel('Gradients')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_party_mode')
+                                .setLabel('Party Mode')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_insult_display')
+                                .setLabel('Insults')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_chaos_mode')
+                                .setLabel('Chaos Mode')
+                                .setStyle(ButtonStyle.Danger)
+                        );
+
+                    const row3 = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('website_toggle_performance_mode')
+                                .setLabel('Performance Mode')
+                                .setStyle(ButtonStyle.Secondary)
+                        );
+
+                    await interaction.update({ embeds: [embed], components: [row1, row2, row3] });
+
+                    await debugLogger.success('WEBSITE', `Feature ${prettyName} ${newValue === 1 ? 'enabled' : 'disabled'}`, {
+                        feature: featureName,
+                        state: newValue === 1 ? 'on' : 'off',
+                        user: interaction.user.username,
+                        userId: interaction.user.id
+                    });
+
+                    console.log(`[WEBSITE] ${prettyName} ${newValue === 1 ? 'enabled' : 'disabled'} by ${interaction.user.username} (${interaction.user.id})`);
+                    return;
+                }
                 // Help menu buttons
                 if (interaction.customId === 'help_tutorial') {
                     const tutorialCommand = interaction.client.commands.get('tutorial');
@@ -224,6 +360,18 @@ module.exports = {
         if (!command) {
             console.error(`Command not found: ${interaction.commandName}`);
             return;
+        }
+
+        // Check for maintenance mode (except for website command which staff use to disable it)
+        if (interaction.commandName !== 'website') {
+            const { WebsiteSettingsModel } = require('../../database/models');
+            const websiteSettings = WebsiteSettingsModel.get();
+            if (websiteSettings && websiteSettings.maintenance_mode === 1) {
+                return interaction.reply({
+                    content: '🔧 **QuestCord is currently in maintenance mode.**\n\nWe\'re performing updates to improve your experience. Please try again later!',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
         }
 
         // Check if command is globally disabled

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { WebsiteSettingsModel } = require('../../database/models');
 const { isStaff } = require('../utils/permissions');
 const config = require('../../../config.json');
@@ -49,6 +49,21 @@ module.exports = {
                             { name: 'Off', value: 'off' }
                         )
                 )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('maintenance')
+                .setDescription('Toggle maintenance mode (Staff only)')
+                .addStringOption(option =>
+                    option
+                        .setName('state')
+                        .setDescription('Enable or disable maintenance mode')
+                        .setRequired(true)
+                        .addChoices(
+                            { name: 'On', value: 'on' },
+                            { name: 'Off', value: 'off' }
+                        )
+                )
         ),
 
     async execute(interaction) {
@@ -60,6 +75,8 @@ module.exports = {
             return handleStatus(interaction);
         } else if (subcommand === 'feature') {
             return handleFeature(interaction);
+        } else if (subcommand === 'maintenance') {
+            return handleMaintenance(interaction);
         }
     }
 };
@@ -120,10 +137,71 @@ async function handleStatus(interaction) {
                 inline: false
             }
         )
-        .setFooter({ text: 'Use /website feature to toggle settings' })
+        .setFooter({ text: await isStaff(interaction) ? 'Click buttons below to toggle features' : 'Staff only: Use /website feature to toggle settings' })
         .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    // Only add buttons if user is staff
+    if (await isStaff(interaction)) {
+        const components = createToggleButtons();
+        await interaction.reply({ embeds: [embed], components, ephemeral: true });
+    } else {
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+}
+
+function createToggleButtons() {
+    // Row 1: Visual Effects
+    const row1 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('website_toggle_card_hover_effects')
+                .setLabel('Card Hover')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_background_animations')
+                .setLabel('Background')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_cosmic_particles')
+                .setLabel('Particles')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_aurora_effect')
+                .setLabel('Aurora')
+                .setStyle(ButtonStyle.Primary)
+        );
+
+    // Row 2: More Visual Effects + Interactive
+    const row2 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('website_toggle_gradient_animations')
+                .setLabel('Gradients')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_party_mode')
+                .setLabel('Party Mode')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_insult_display')
+                .setLabel('Insults')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId('website_toggle_chaos_mode')
+                .setLabel('Chaos Mode')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+    // Row 3: Performance Mode
+    const row3 = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('website_toggle_performance_mode')
+                .setLabel('Performance Mode')
+                .setStyle(ButtonStyle.Secondary)
+        );
+
+    return [row1, row2, row3];
 }
 
 async function handleFeature(interaction) {
@@ -193,6 +271,75 @@ async function handleFeature(interaction) {
         console.error('Error updating website feature:', error);
         await interaction.reply({
             content: '❌ An error occurred while updating the feature.',
+            ephemeral: true
+        });
+    }
+}
+
+async function handleMaintenance(interaction) {
+    // Check if user is staff
+    if (!await isStaff(interaction)) {
+        return interaction.reply({
+            content: '❌ This command is only available to QuestCord staff.',
+            ephemeral: true
+        });
+    }
+
+    const state = interaction.options.getString('state');
+    const enabled = state === 'on' ? 1 : 0;
+
+    try {
+        WebsiteSettingsModel.update({ maintenance_mode: enabled });
+
+        // Broadcast updated settings to all connected clients
+        const { broadcastWebsiteSettings } = require('../../web/server');
+        const updatedSettings = WebsiteSettingsModel.get();
+        broadcastWebsiteSettings({
+            effects: {
+                backgroundAnimations: updatedSettings.background_animations === 1,
+                cardHoverEffects: updatedSettings.card_hover_effects === 1,
+                cosmicParticles: updatedSettings.cosmic_particles === 1,
+                auroraEffect: updatedSettings.aurora_effect === 1,
+                gradientAnimations: updatedSettings.gradient_animations === 1
+            },
+            interactiveFeatures: {
+                partyMode: updatedSettings.party_mode === 1,
+                insultDisplay: updatedSettings.insult_display === 1,
+                chaosMode: updatedSettings.chaos_mode === 1
+            },
+            performanceMode: updatedSettings.performance_mode === 1,
+            maintenanceMode: updatedSettings.maintenance_mode === 1
+        });
+
+        const embed = new EmbedBuilder()
+            .setColor(state === 'on' ? config.theme.colors.warning : config.theme.colors.success)
+            .setTitle(state === 'on' ? '🔧 Maintenance Mode Enabled' : '✅ Maintenance Mode Disabled')
+            .setDescription(
+                state === 'on'
+                    ? '**Maintenance mode is now active.**\n\n• Website visitors will see a maintenance page\n• Bot commands will respond with a maintenance message\n• Only staff can disable maintenance mode'
+                    : '**Maintenance mode has been disabled.**\n\n• Website is now accessible to all users\n• Bot commands are now fully operational'
+            )
+            .addFields({
+                name: 'Updated by',
+                value: `${interaction.user.username} (${interaction.user.id})`,
+                inline: true
+            })
+            .setFooter({ text: state === 'on' ? 'Use /website maintenance state:Off to disable' : 'System is back online' })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+
+        await debugLogger.success('WEBSITE', `Maintenance mode ${state === 'on' ? 'enabled' : 'disabled'}`, {
+            state: state,
+            user: interaction.user.username,
+            userId: interaction.user.id
+        });
+
+        console.log(`[MAINTENANCE] Maintenance mode ${state === 'on' ? 'enabled' : 'disabled'} by ${interaction.user.username} (${interaction.user.id})`);
+    } catch (error) {
+        console.error('Error updating maintenance mode:', error);
+        await interaction.reply({
+            content: '❌ An error occurred while updating maintenance mode.',
             ephemeral: true
         });
     }

@@ -5,6 +5,20 @@ const config = require('../../../config.json');
 const insults = require('../../../config/insults.json');
 const { debugLogger } = require('../../utils/debugLogger');
 
+// Maintenance mode middleware
+function checkMaintenanceMode(req, res, next) {
+    // Skip maintenance check for health endpoint
+    if (req.path === '/health') {
+        return next();
+    }
+
+    const websiteSettings = WebsiteSettingsModel.get();
+    if (websiteSettings && websiteSettings.maintenance_mode === 1) {
+        return res.render('maintenance');
+    }
+    next();
+}
+
 // Simple in-memory rate limiter for insults
 const insultRateLimits = new Map();
 const RATE_LIMIT_WINDOW = 2000; // 2 seconds
@@ -93,21 +107,21 @@ router.get('/api/insult', (req, res) => {
 });
 
 // Make People Cry prank page
-router.get('/makepeoplecry', (req, res) => {
+router.get('/makepeoplecry', checkMaintenanceMode, (req, res) => {
     res.render('makepeoplecry');
 });
 
 // Terms of Service page
-router.get('/terms', (req, res) => {
+router.get('/terms', checkMaintenanceMode, (req, res) => {
     res.render('terms');
 });
 
 // Privacy Policy page
-router.get('/privacy', (req, res) => {
+router.get('/privacy', checkMaintenanceMode, (req, res) => {
     res.render('privacy');
 });
 
-router.get('/', async (req, res) => {
+router.get('/', checkMaintenanceMode, async (req, res) => {
     try {
         const stats = GlobalStatsModel.get();
         const totalCurrency = GlobalStatsModel.getTotalCurrencyInCirculation();

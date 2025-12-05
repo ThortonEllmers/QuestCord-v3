@@ -279,6 +279,7 @@ function initializeDatabase() {
             insult_display INTEGER DEFAULT 1,
             chaos_mode INTEGER DEFAULT 1,
             performance_mode INTEGER DEFAULT 0,
+            maintenance_mode INTEGER DEFAULT 0,
             updated_at INTEGER DEFAULT (strftime('%s', 'now'))
         );
 
@@ -459,6 +460,15 @@ function initializeDatabase() {
             console.log(`Migration completed: ${column.name} added`);
         }
     });
+
+    // Migration: Add maintenance_mode to website_settings table
+    const websiteSettingsTableInfo = db.prepare("PRAGMA table_info(website_settings)").all();
+    const hasMaintenanceMode = websiteSettingsTableInfo.some(col => col.name === 'maintenance_mode');
+    if (!hasMaintenanceMode) {
+        console.log('Running migration: Adding maintenance_mode to website_settings...');
+        db.exec('ALTER TABLE website_settings ADD COLUMN maintenance_mode INTEGER DEFAULT 0');
+        console.log('Migration completed: maintenance_mode added');
+    }
 
     console.log('Database initialized successfully');
 

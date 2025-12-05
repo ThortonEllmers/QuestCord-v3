@@ -43,6 +43,39 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
         );
 
         console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+
+        // Log to debug channel if available
+        try {
+            const { Client, GatewayIntentBits } = require('discord.js');
+            const { debugLogger } = require('../utils/debugLogger');
+            const { db } = require('../database/schema');
+
+            const tempClient = new Client({ intents: [GatewayIntentBits.Guilds] });
+            await tempClient.login(process.env.DISCORD_TOKEN);
+
+            // Initialize debug logger
+            await debugLogger.initialize(tempClient);
+
+            // Get disabled and restricted commands
+            const disabledCommands = db.prepare('SELECT command_name FROM disabled_commands').all();
+            const restrictedCommands = db.prepare('SELECT DISTINCT command_name FROM command_whitelist').all();
+
+            const commandList = commands.map(cmd => cmd.name);
+            const disabledList = disabledCommands.map(c => c.command_name);
+            const restrictedList = restrictedCommands.map(c => c.command_name);
+
+            await debugLogger.success('COMMANDS', `Deployed ${data.length} commands to guild`, {
+                guildId: guildId,
+                totalCommands: data.length,
+                commands: commandList.join(', '),
+                disabledCommands: disabledList.length > 0 ? disabledList.join(', ') : 'None',
+                restrictedCommands: restrictedList.length > 0 ? restrictedList.join(', ') : 'None'
+            });
+
+            await tempClient.destroy();
+        } catch (debugError) {
+            console.error('Failed to log to debug channel:', debugError.message);
+        }
     } catch (error) {
         console.error(error);
     }
