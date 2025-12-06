@@ -5,10 +5,13 @@ const path = require('path');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
 const config = require('../../config.json');
 const { updateStaffRoles } = require('./middleware/auth');
 const { checkIPBan, getClientIP, calculateThreatLevel } = require('./middleware/ipBan');
 const { debugLogger } = require('../utils/debugLogger');
+const { initializeDiscordOAuth, passport } = require('./auth/discordOAuth');
+const EventBus = require('../services/EventBus');
 
 let io = null;
 let discordClient = null;
@@ -39,6 +42,35 @@ async function startWebServer(client) {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
+    // Session middleware for OAuth
+    app.use(session({
+        secret: process.env.SESSION_SECRET || 'default-secret-change-this',
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        }
+    }));
+
+    // Initialize Discord OAuth
+    initializeDiscordOAuth();
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    // Register EventBus WebSocket broadcaster
+    EventBus.registerWebSocketBroadcaster((data) => {
+        if (!io) return;
+        io.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
+            }
+        });
+    });
+
+    // Register EventBus Discord client
+    EventBus.registerDiscordClient(client);
+
     app.use(checkIPBan);
 
     const limiter = rateLimit({
@@ -59,10 +91,17 @@ async function startWebServer(client) {
     app.set('views', path.join(__dirname, 'views'));
     app.use(express.static(path.join(__dirname, '../../public')));
 
+    // Serve Vue app assets specifically
+    app.use('/assets', express.static(path.join(__dirname, '../../public/app/assets')));
+
     const apiRoutes = require('./routes/api');
     const adminRoutes = require('./routes/admin');
     const webRoutes = require('./routes/web');
+    const authRoutes = require('./routes/auth');
+    const apiV1Routes = require('../api/routes/v1');
 
+    app.use('/auth', authRoutes);
+    app.use('/api/v1', apiV1Routes);
     app.use('/api', apiRoutes);
     app.use('/api/admin', adminRoutes);
     app.use('/', webRoutes);

@@ -96,3 +96,5 @@ process.on('SIGTERM', async () => {
 main();
 
 module.exports = { getReportingInstance };
+
+

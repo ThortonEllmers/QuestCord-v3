@@ -76,6 +76,47 @@ class UserModel {
         const stmt = db.prepare('UPDATE users SET last_quest_time = strftime(\'%s\', \'now\'), updated_at = strftime(\'%s\', \'now\') WHERE discord_id = ?');
         return stmt.run(discordId);
     }
+
+    static updateProfile(discordId, updates) {
+        const allowedFields = ['profile_bio', 'profile_banner', 'vanity_url', 'avatar_hash'];
+        const fields = [];
+        const values = [];
+
+        // Only update allowed fields
+        for (const [key, value] of Object.entries(updates)) {
+            if (allowedFields.includes(key)) {
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
+        }
+
+        if (fields.length === 0) {
+            return { changes: 0 };
+        }
+
+        // Add updated_at
+        fields.push('updated_at = strftime(\'%s\', \'now\')');
+
+        // Add discord_id to values array
+        values.push(discordId);
+
+        const stmt = db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE discord_id = ?`);
+        return stmt.run(...values);
+    }
+
+    static findByVanityUrl(vanityUrl) {
+        const stmt = db.prepare('SELECT * FROM users WHERE vanity_url = ? COLLATE NOCASE');
+        return stmt.get(vanityUrl);
+    }
+
+    static findByIdentifier(identifier) {
+        // Try to find by vanity URL first, then fall back to discord_id
+        let user = this.findByVanityUrl(identifier);
+        if (!user) {
+            user = this.findByDiscordId(identifier);
+        }
+        return user;
+    }
 }
 
 class ServerModel {

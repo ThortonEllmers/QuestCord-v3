@@ -27,13 +27,13 @@
     <div class="hero">
         <div class="container">
             <div class="hero-title-container">
-                <img src="/images/compass.png" alt="Compass" class="hero-icon" onerror="this.style.display='none'">
                 <h1 class="hero-title">QuestCord</h1>
             </div>
             <p class="hero-subtitle">Quest across the Discord universe</p>
             <p class="hero-description">Complete quests, defeat bosses, and climb the global leaderboard in this immersive Discord RPG experience</p>
             <div class="hero-buttons">
                 <a href="https://discord.com/oauth2/authorize?client_id=<%= process.env.DISCORD_CLIENT_ID %>&permissions=2048&scope=bot%20applications.commands" class="btn btn-primary" target="_blank">Add to Discord</a>
+                <a href="/auth/discord/login?returnTo=/dashboard" class="btn btn-secondary">Web Dashboard</a>
                 <a href="#about" class="btn btn-secondary">Learn More</a>
             </div>
         </div>
@@ -93,7 +93,7 @@
                     </div>
                 </div>
                 <div class="content-image">
-                    <img src="/images/compass.png" alt="Quest Example" onerror="this.src='https://via.placeholder.com/500x600/7c3aed/ffffff?text=Quest+System'">
+                    <img src="/images/compass.png" alt="Quest Example" onerror="this.style.display='none'">
                 </div>
             </div>
         </div>

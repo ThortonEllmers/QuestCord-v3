@@ -470,6 +470,114 @@ function initializeDatabase() {
         console.log('Migration completed: maintenance_mode added');
     }
 
+    // Migration: Phase 1 - Daily Login Rewards System
+    console.log('Checking Phase 1 migrations...');
+
+    // Create login_rewards table
+    const loginRewardsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_rewards'").get();
+    if (!loginRewardsTableExists) {
+        console.log('Running migration: Creating login_rewards table...');
+        db.exec(`
+            CREATE TABLE login_rewards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                day INTEGER NOT NULL UNIQUE,
+                currency INTEGER DEFAULT 0,
+                gems INTEGER DEFAULT 0,
+                item_id INTEGER,
+                item_quantity INTEGER DEFAULT 1,
+                description TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (item_id) REFERENCES items(id)
+            )
+        `);
+
+        // Seed initial 7-day login rewards
+        db.exec(`
+            INSERT INTO login_rewards (day, currency, gems, description) VALUES
+            (1, 100, 0, 'Day 1: Welcome bonus!'),
+            (2, 150, 0, 'Day 2: Keep it up!'),
+            (3, 200, 5, 'Day 3: Dedication rewarded!'),
+            (4, 250, 0, 'Day 4: Halfway there!'),
+            (5, 300, 10, 'Day 5: Almost a week!'),
+            (6, 400, 0, 'Day 6: One more day!'),
+            (7, 500, 25, 'Day 7: Weekly streak bonus!')
+        `);
+
+        console.log('Migration completed: login_rewards table created and seeded');
+    }
+
+    // Create user_login_streak table
+    const loginStreakTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_login_streak'").get();
+    if (!loginStreakTableExists) {
+        console.log('Running migration: Creating user_login_streak table...');
+        db.exec(`
+            CREATE TABLE user_login_streak (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                last_login_date TEXT,
+                current_streak INTEGER DEFAULT 0,
+                longest_streak INTEGER DEFAULT 0,
+                total_logins INTEGER DEFAULT 0,
+                last_reward_claimed INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                UNIQUE(user_id)
+            )
+        `);
+        console.log('Migration completed: user_login_streak table created');
+    }
+
+    // Add last_login_date column to users
+    const userTableInfoPhase1 = db.prepare("PRAGMA table_info(users)").all();
+    if (!userTableInfoPhase1.some(col => col.name === 'last_login_date')) {
+        console.log('Running migration: Adding last_login_date to users...');
+        db.exec('ALTER TABLE users ADD COLUMN last_login_date TEXT');
+        console.log('Migration completed: last_login_date added');
+    }
+
+    // Add login_streak column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'login_streak')) {
+        console.log('Running migration: Adding login_streak to users...');
+        db.exec('ALTER TABLE users ADD COLUMN login_streak INTEGER DEFAULT 0');
+        console.log('Migration completed: login_streak added');
+    }
+
+    // Add profile_banner column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'profile_banner')) {
+        console.log('Running migration: Adding profile_banner to users...');
+        db.exec('ALTER TABLE users ADD COLUMN profile_banner TEXT');
+        console.log('Migration completed: profile_banner added');
+    }
+
+    // Add profile_bio column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'profile_bio')) {
+        console.log('Running migration: Adding profile_bio to users...');
+        db.exec('ALTER TABLE users ADD COLUMN profile_bio TEXT');
+        console.log('Migration completed: profile_bio added');
+    }
+
+    // Add avatar_hash column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'avatar_hash')) {
+        console.log('Running migration: Adding avatar_hash to users...');
+        db.exec('ALTER TABLE users ADD COLUMN avatar_hash TEXT');
+        console.log('Migration completed: avatar_hash added');
+    }
+
+    // Add vanity_url column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'vanity_url')) {
+        console.log('Running migration: Adding vanity_url to users...');
+        db.exec('ALTER TABLE users ADD COLUMN vanity_url TEXT');
+        console.log('Migration completed: vanity_url added');
+
+        // Create unique index for vanity_url
+        console.log('Creating unique index for vanity_url...');
+        db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_vanity_url ON users(vanity_url) WHERE vanity_url IS NOT NULL');
+        console.log('Unique index created for vanity_url');
+    }
+
+    console.log('Phase 1 migrations completed successfully');
+
     console.log('Database initialized successfully');
 
     // Seed items if this is first run

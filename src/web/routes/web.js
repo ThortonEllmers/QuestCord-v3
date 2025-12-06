@@ -202,4 +202,20 @@ router.get('/', checkMaintenanceMode, async (req, res) => {
     }
 });
 
+// Serve Vue app for dashboard routes
+const path = require('path');
+const fs = require('fs');
+
+router.get(['/dashboard', '/quests', '/bosses', '/profile', '/profile/:userId', '/login'], (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+
+    // Check if the built app exists
+    if (fs.existsSync(appPath)) {
+        res.sendFile(appPath);
+    } else {
+        res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+});
+
 module.exports = router;
+
