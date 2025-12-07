@@ -183,7 +183,24 @@ function optionalAuth(req, res, next) {
  * Should be used after isAuthenticated middleware
  */
 function isWhitelisted(req, res, next) {
-    const config = require('../../../config.json');
+    // Read config file directly to avoid Node.js module caching
+    // This allows whitelist changes to take effect without restart
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, '../../../config.json');
+
+    let config;
+    try {
+        const configData = fs.readFileSync(configPath, 'utf8');
+        config = JSON.parse(configData);
+    } catch (error) {
+        console.error('Error reading config file:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Server Error',
+            message: 'Failed to load configuration'
+        });
+    }
 
     // If testing mode is disabled, allow all authenticated users
     if (!config.webDashboard || !config.webDashboard.testingMode) {
