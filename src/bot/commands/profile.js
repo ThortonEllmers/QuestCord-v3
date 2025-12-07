@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { UserModel, LeaderboardModel } = require('../../database/models');
 const { LevelSystem } = require('../../utils/levelSystem');
+const { formatNumber } = require('../../utils/formatNumber');
 const config = require('../../../config.json');
 
 module.exports = {
@@ -33,12 +34,12 @@ module.exports = {
         const rank = LeaderboardModel.getUserRank(user.id, now.getMonth() + 1, now.getFullYear());
         const levelTitle = LevelSystem.getLevelTitle(user.level);
         const progressBar = LevelSystem.getProgressBar(user.experience, LevelSystem.getRequiredExperience(user.level));
-        const verifiedBadge = user.verified ? ' ✓' : '';
+        const verifiedBadge = user.verified ? ' <:verified:1234567890> ✅' : '';
 
         const embed = new EmbedBuilder()
-            .setColor(config.theme.colors.primary)
+            .setColor(user.verified ? 0x3b82f6 : config.theme.colors.primary)
             .setTitle(`${targetUser.username}${verifiedBadge}'s Profile`)
-            .setDescription(`**${levelTitle}**`)
+            .setDescription(`**${levelTitle}**${user.verified ? '\n✨ *Verified User*' : ''}`)
             .setThumbnail(targetUser.displayAvatarURL())
             .addFields(
                 {
@@ -48,17 +49,17 @@ module.exports = {
                 },
                 {
                     name: 'Dakari',
-                    value: user.currency.toLocaleString(),
+                    value: formatNumber(user.currency),
                     inline: true
                 },
                 {
                     name: 'Gems',
-                    value: user.gems.toLocaleString(),
+                    value: formatNumber(user.gems),
                     inline: true
                 },
                 {
                     name: 'Total Quests',
-                    value: user.total_quests.toLocaleString(),
+                    value: formatNumber(user.total_quests),
                     inline: true
                 },
                 {

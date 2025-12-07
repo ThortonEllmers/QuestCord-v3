@@ -95,7 +95,17 @@ function cancelEditing() {
 }
 
 function formatNumber(num) {
-  return num?.toLocaleString() || '0'
+  if (num === null || num === undefined) return '0'
+
+  const absNum = Math.abs(num)
+
+  if (absNum >= 1e15) return (num / 1e15).toFixed(1).replace(/\.0$/, '') + 'Q'
+  if (absNum >= 1e12) return (num / 1e12).toFixed(1).replace(/\.0$/, '') + 'T'
+  if (absNum >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'B'
+  if (absNum >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (absNum >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K'
+
+  return num.toString()
 }
 </script>
 
@@ -163,7 +173,11 @@ function formatNumber(num) {
             <!-- User Info -->
             <div class="flex-1 text-center md:text-left">
               <h1 class="text-3xl font-bold text-white mb-2 flex items-center gap-2 justify-center md:justify-start">
-                <span v-if="userStore.profileData.verified" class="text-blue-400" title="Verified">✓</span>
+                <span v-if="userStore.profileData.verified" class="verified-badge" title="Verified User">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
+                    <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+                  </svg>
+                </span>
                 <span>{{ userStore.profileData.username }}</span>
               </h1>
 
@@ -377,6 +391,43 @@ function formatNumber(num) {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  animation: verified-pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+}
+
+@keyframes verified-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.9));
+  }
+}
+
+.verified-badge:hover {
+  animation: verified-spin 0.6s ease-in-out;
+  filter: drop-shadow(0 0 16px rgba(59, 130, 246, 1));
+}
+
+@keyframes verified-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
   }
 }
 </style>

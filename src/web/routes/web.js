@@ -4,6 +4,7 @@ const { GlobalStatsModel, LeaderboardModel, StaffModel, WebsiteSettingsModel } =
 const config = require('../../../config.json');
 const insults = require('../../../config/insults.json');
 const { debugLogger } = require('../../utils/debugLogger');
+const { formatNumber } = require('../../utils/formatNumber');
 
 // Maintenance mode middleware
 function checkMaintenanceMode(req, res, next) {
@@ -221,9 +222,9 @@ router.get('/profile/:userId', (req, res) => {
         let user = null;
         const userId = req.params.userId;
 
-        // Check if userId is a vanity URL first
+        // Check if userId is a vanity URL first (case-insensitive)
         const { db } = require('../../database/schema');
-        user = db.prepare('SELECT * FROM users WHERE vanity_url = ?').get(userId);
+        user = db.prepare('SELECT * FROM users WHERE LOWER(vanity_url) = LOWER(?)').get(userId);
 
         // If not found, try as Discord ID
         if (!user) {
@@ -241,9 +242,10 @@ router.get('/profile/:userId', (req, res) => {
             }
 
             // Create meta tags
-            const verifiedBadge = user.verified ? ' ✓' : '';
-            const title = `${user.username}${verifiedBadge}'s Profile - QuestCord`;
-            const description = `Level ${user.level} | ${user.currency.toLocaleString()} Dakari | ${user.quests_completed || 0} Quests Completed | ${user.bosses_defeated || 0} Bosses Defeated`;
+            const verifiedBadge = user.verified ? '✅ ' : '';
+            const verifiedText = user.verified ? ' • Verified User ✨' : '';
+            const title = `${verifiedBadge}${user.username}'s Profile - QuestCord`;
+            const description = `Level ${user.level}${verifiedText} | ${formatNumber(user.currency)} Dakari | ${formatNumber(user.quests_completed || 0)} Quests Completed | ${formatNumber(user.bosses_defeated || 0)} Bosses Defeated`;
             const url = `https://questcord.fun/profile/${userId}`;
 
             const metaTags = `
@@ -307,7 +309,7 @@ router.get('/dashboard', (req, res) => {
         let html = fs.readFileSync(appPath, 'utf8');
 
         const title = 'Dashboard - QuestCord';
-        const description = `Your QuestCord RPG Dashboard | ${stats.total_servers.toLocaleString()} Servers | ${stats.total_users.toLocaleString()} Players | ${stats.total_quests_completed.toLocaleString()} Quests Completed`;
+        const description = `Your QuestCord RPG Dashboard | ${formatNumber(stats.total_servers)} Servers | ${formatNumber(stats.total_users)} Players | ${formatNumber(stats.total_quests_completed)} Quests Completed`;
         const url = 'https://questcord.fun/dashboard';
 
         html = injectMetaTags(html, title, description, url);
@@ -396,7 +398,7 @@ router.get(['/profile', '/login', '/'], (req, res) => {
         let html = fs.readFileSync(appPath, 'utf8');
 
         const title = 'QuestCord - Quest Across the Discord Universe';
-        const description = `An immersive Discord RPG experience | ${stats.total_servers.toLocaleString()} Servers | ${stats.total_users.toLocaleString()} Players | Complete quests, defeat bosses, and climb the leaderboard!`;
+        const description = `An immersive Discord RPG experience | ${formatNumber(stats.total_servers)} Servers | ${formatNumber(stats.total_users)} Players | Complete quests, defeat bosses, and climb the leaderboard!`;
         const url = 'https://questcord.fun';
 
         html = injectMetaTags(html, title, description, url);
