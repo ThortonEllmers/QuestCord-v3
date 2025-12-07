@@ -3,6 +3,7 @@ const { BossModel, BossParticipantModel, UserModel, ServerModel, LeaderboardMode
 const { getRandomBoss } = require('../../bot/utils/questData');
 const { LevelSystem } = require('../../utils/levelSystem');
 const config = require('../../../config.json');
+const AchievementService = require('./AchievementService');
 
 /**
  * BossService - Handles all boss-related game logic
@@ -228,6 +229,12 @@ class BossService extends BaseService {
             BossModel.dealDamage(boss.id, damage);
 
             const updatedBoss = BossModel.findById(boss.id);
+
+            // Get total attack count for achievements
+            const participant = BossParticipantModel.getParticipant(boss.id, user.id);
+            if (participant) {
+                AchievementService.checkAchievements(user.id, 'boss_attack', participant.attack_count);
+            }
 
             // Emit attack event
             this.emitUserEvent(userId, 'boss:attacked', {

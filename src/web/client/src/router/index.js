@@ -29,6 +29,12 @@ const routes = [
     component: () => import('../views/Bosses.vue')
   },
   {
+    path: '/achievements',
+    name: 'Achievements',
+    component: () => import('../views/Achievements.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/daily',
     name: 'Daily',
     component: () => import('../views/Daily.vue')
@@ -37,6 +43,11 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue')
+  },
+  {
+    path: '/coming-soon',
+    name: 'ComingSoon',
+    component: () => import('../views/ComingSoon.vue')
   }
 ]
 

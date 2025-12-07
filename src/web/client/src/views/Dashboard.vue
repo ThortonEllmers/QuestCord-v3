@@ -12,6 +12,7 @@
           <router-link to="/dashboard" class="btn btn-primary">Dashboard</router-link>
           <router-link to="/quests" class="btn btn-secondary">Quests</router-link>
           <router-link to="/bosses" class="btn btn-secondary">Bosses</router-link>
+          <router-link to="/achievements" class="btn btn-secondary">Achievements</router-link>
           <router-link to="/profile" class="btn btn-secondary">My Profile</router-link>
           <button v-if="authStore.isAuthenticated" @click="authStore.logout()" class="btn btn-secondary" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border: none;">Logout</button>
           <button v-else @click="authStore.login()" class="btn btn-secondary" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border: none;">Login</button>

@@ -2,6 +2,7 @@ const { BaseService, ValidationError, NotFoundError } = require('./BaseService')
 const { QuestModel, UserQuestModel, UserModel, ServerModel } = require('../../database/models');
 const { getRandomQuests } = require('../../bot/utils/questData');
 const config = require('../../../config.json');
+const AchievementService = require('./AchievementService');
 
 /**
  * QuestService - Handles all quest-related game logic
@@ -227,6 +228,13 @@ class QuestService extends BaseService {
 
             // Get updated user data
             const updatedUser = UserModel.findByDiscordId(userId);
+
+            // Check for achievements
+            const unlockedAchievements = AchievementService.checkAchievements(
+                user.id,
+                'quest_count',
+                updatedUser.quests_completed
+            );
 
             // Emit event
             this.emitUserEvent(userId, 'quest:completed', {

@@ -585,6 +585,90 @@ function initializeDatabase() {
 
     console.log('Phase 1 migrations completed successfully');
 
+    // ============================================
+    // PHASE 2 MIGRATIONS - ACHIEVEMENT SYSTEM
+    // ============================================
+
+    // Migration: Create achievements table
+    const achievementsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='achievements'").get();
+
+    if (!achievementsTableExists) {
+        console.log('Running migration: Creating achievements table...');
+        db.exec(`
+            CREATE TABLE achievements (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT NOT NULL,
+                icon TEXT,
+                points INTEGER DEFAULT 10,
+                rarity TEXT DEFAULT 'common',
+                criteria_type TEXT NOT NULL,
+                criteria_value INTEGER,
+                hidden INTEGER DEFAULT 0,
+                created_at INTEGER DEFAULT (strftime('%s', 'now'))
+            );
+
+            CREATE INDEX idx_achievements_category ON achievements(category);
+            CREATE INDEX idx_achievements_rarity ON achievements(rarity);
+        `);
+        console.log('✓ achievements table created');
+    }
+
+    // Migration: Create user_achievements table
+    const userAchievementsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_achievements'").get();
+
+    if (!userAchievementsTableExists) {
+        console.log('Running migration: Creating user_achievements table...');
+        db.exec(`
+            CREATE TABLE user_achievements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                achievement_id TEXT NOT NULL,
+                progress INTEGER DEFAULT 0,
+                unlocked INTEGER DEFAULT 0,
+                unlocked_at INTEGER,
+                notified INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (achievement_id) REFERENCES achievements(id),
+                UNIQUE(user_id, achievement_id)
+            );
+
+            CREATE INDEX idx_user_achievements_user ON user_achievements(user_id);
+            CREATE INDEX idx_user_achievements_unlocked ON user_achievements(user_id, unlocked);
+        `);
+        console.log('✓ user_achievements table created');
+    }
+
+    // Seed achievements
+    const achievementCount = db.prepare('SELECT COUNT(*) as count FROM achievements').get();
+    if (achievementCount.count === 0) {
+        console.log('Seeding achievements...');
+        const { achievements } = require('./achievements');
+        const insertAchievement = db.prepare(`
+            INSERT INTO achievements (id, name, description, category, icon, points, rarity, criteria_type, criteria_value, hidden)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const achievement of achievements) {
+            insertAchievement.run(
+                achievement.id,
+                achievement.name,
+                achievement.description,
+                achievement.category,
+                achievement.icon,
+                achievement.points,
+                achievement.rarity,
+                achievement.criteria_type,
+                achievement.criteria_value,
+                achievement.hidden
+            );
+        }
+        console.log(`✓ Seeded ${achievements.length} achievements`);
+    }
+
+    console.log('Phase 2 migrations completed successfully');
+
     // Migration: Create solitary_confinement table
     const confinementTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='solitary_confinement'").get();
 

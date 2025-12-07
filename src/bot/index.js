@@ -28,17 +28,31 @@ class BotClient extends Client {
             return;
         }
 
-        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+        this.loadCommandsRecursive(commandsPath);
+    }
 
-        for (const file of commandFiles) {
-            const filePath = path.join(commandsPath, file);
-            const command = require(filePath);
+    loadCommandsRecursive(dir) {
+        const items = fs.readdirSync(dir, { withFileTypes: true });
 
-            if ('data' in command && 'execute' in command) {
-                this.commands.set(command.data.name, command);
-                console.log(`Loaded command: ${command.data.name}`);
-            } else {
-                console.warn(`Command at ${filePath} is missing required "data" or "execute" property`);
+        for (const item of items) {
+            const itemPath = path.join(dir, item.name);
+
+            if (item.isDirectory()) {
+                // Recursively load commands from subdirectories
+                this.loadCommandsRecursive(itemPath);
+            } else if (item.isFile() && item.name.endsWith('.js')) {
+                try {
+                    const command = require(itemPath);
+
+                    if ('data' in command && 'execute' in command) {
+                        this.commands.set(command.data.name, command);
+                        console.log(`Loaded command: ${command.data.name}`);
+                    } else {
+                        console.warn(`Command at ${itemPath} is missing required "data" or "execute" property`);
+                    }
+                } catch (error) {
+                    console.error(`Error loading command ${item.name}:`, error.message);
+                }
             }
         }
     }

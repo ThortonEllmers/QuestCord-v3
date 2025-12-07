@@ -9,7 +9,7 @@
     }
   },
   "quest": {
-    "questsPerServer": 5,
+    "questsPerServer": 6,
     "rotationTime": "0 0 * * *",
     "cooldownTime": 300000
   },
@@ -27,9 +27,18 @@
   "leaderboard": {
     "resetDay": 1,
     "topRewards": {
-      "1": { "currency": 10000, "gems": 100 },
-      "2": { "currency": 5000, "gems": 50 },
-      "3": { "currency": 2500, "gems": 25 }
+      "1": {
+        "currency": 10000,
+        "gems": 100
+      },
+      "2": {
+        "currency": 5000,
+        "gems": 50
+      },
+      "3": {
+        "currency": 2500,
+        "gems": 25
+      }
     }
   },
   "activity": {
@@ -53,5 +62,9 @@
       "error": "#ef4444",
       "warning": "#f59e0b"
     }
+  },
+  "webDashboard": {
+    "testingMode": true,
+    "whitelist": []
   }
 }

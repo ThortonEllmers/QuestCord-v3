@@ -61,7 +61,8 @@ onMounted(async () => {
   if (userId.value) {
     await userStore.fetchProfile(userId.value)
 
-    if (userStore.profileData) {
+    // Only populate edit fields if it's the user's own profile
+    if (userStore.profileData && isOwnProfile.value) {
       editBio.value = userStore.profileData.profile_bio || ''
       editBanner.value = userStore.profileData.profile_banner || ''
       editVanityUrl.value = userStore.profileData.vanity_url || ''
@@ -70,11 +71,20 @@ onMounted(async () => {
 })
 
 function startEditing() {
+  // SECURITY: Only allow editing own profile
+  if (!isOwnProfile.value) {
+    console.error('Cannot edit another user\'s profile')
+    return
+  }
   isEditing.value = true
 }
 
 async function saveProfile() {
-  if (!userId.value) return
+  // SECURITY: Only allow saving own profile
+  if (!userId.value || !isOwnProfile.value) {
+    console.error('Cannot save another user\'s profile')
+    return
+  }
 
   const success = await userStore.updateProfile(userId.value, {
     profile_bio: editBio.value,

@@ -112,6 +112,54 @@ class UserController {
             });
         }
     }
+
+    /**
+     * Get user's available servers
+     * GET /api/v1/users/me/servers
+     */
+    static async getUserServers(req, res) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Not authenticated'
+                });
+            }
+
+            const discordId = req.user.discord_id;
+
+            // Get servers from the database where the user has visited
+            const { db } = require('../../database/schema');
+            const servers = db.prepare(`
+                SELECT DISTINCT s.discord_id, s.name
+                FROM servers s
+                INNER JOIN user_quests uq ON uq.server_id = s.id
+                INNER JOIN users u ON u.id = uq.user_id
+                WHERE u.discord_id = ?
+                UNION
+                SELECT s.discord_id, s.name
+                FROM servers s
+                WHERE s.opted_in = 1
+                ORDER BY name
+            `).all(discordId);
+
+            const formattedServers = servers.map(s => ({
+                id: s.discord_id,
+                name: s.name
+            }));
+
+            return res.json({
+                success: true,
+                data: formattedServers
+            });
+        } catch (error) {
+            console.error('Error fetching user servers:', error);
+            return res.json({
+                success: true,
+                data: []
+            });
+        }
+    }
 }
 
 module.exports = UserController;

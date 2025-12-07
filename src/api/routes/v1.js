@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated, optionalAuth } = require('../../web/auth/discordOAuth');
+const { isAuthenticated, optionalAuth, isWhitelisted } = require('../../web/auth/discordOAuth');
 const UserController = require('../controllers/UserController');
 const QuestController = require('../controllers/QuestController');
 const BossController = require('../controllers/BossController');
 const LoginController = require('../controllers/LoginController');
+const AchievementController = require('../controllers/AchievementController');
+
+// Combined middleware: authenticate AND check whitelist
+const requireAuth = [isAuthenticated, isWhitelisted];
 
 /**
  * API v1 Routes
@@ -12,12 +16,23 @@ const LoginController = require('../controllers/LoginController');
  * RESTful API endpoints for the QuestCord platform
  */
 
+// Middleware to disable caching for all API responses
+router.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
+
 // ============================================================================
 // User Routes
 // ============================================================================
 
-// Get current user (requires authentication)
-router.get('/users/me', isAuthenticated, UserController.getMe);
+// Get current user (requires authentication + whitelist)
+router.get('/users/me', requireAuth, UserController.getMe);
+
+// Get user's available servers (requires authentication + whitelist)
+router.get('/users/me/servers', requireAuth, UserController.getUserServers);
 
 // Get user profile (public)
 router.get('/users/:userId', optionalAuth, UserController.getProfile);
@@ -25,8 +40,8 @@ router.get('/users/:userId', optionalAuth, UserController.getProfile);
 // Get user stats (public)
 router.get('/users/:userId/stats', optionalAuth, UserController.getStats);
 
-// Update user profile (requires authentication)
-router.patch('/users/:userId', isAuthenticated, UserController.updateProfile);
+// Update user profile (requires authentication + whitelist)
+router.patch('/users/:userId', requireAuth, UserController.updateProfile);
 
 // ============================================================================
 // Quest Routes
@@ -35,17 +50,17 @@ router.patch('/users/:userId', isAuthenticated, UserController.updateProfile);
 // Get active quests for a server (public)
 router.get('/quests', optionalAuth, QuestController.getActiveQuests);
 
-// Get user's quests (requires authentication)
-router.get('/quests/user', isAuthenticated, QuestController.getUserQuests);
+// Get user's quests (requires authentication + whitelist)
+router.get('/quests/user', requireAuth, QuestController.getUserQuests);
 
-// Accept a quest (requires authentication)
-router.post('/quests/:questId/accept', isAuthenticated, QuestController.acceptQuest);
+// Accept a quest (requires authentication + whitelist)
+router.post('/quests/:questId/accept', requireAuth, QuestController.acceptQuest);
 
-// Complete a quest (requires authentication)
-router.post('/quests/:questId/complete', isAuthenticated, QuestController.completeQuest);
+// Complete a quest (requires authentication + whitelist)
+router.post('/quests/:questId/complete', requireAuth, QuestController.completeQuest);
 
-// Fail a quest (requires authentication)
-router.post('/quests/:questId/fail', isAuthenticated, QuestController.failQuest);
+// Fail a quest (requires authentication + whitelist)
+router.post('/quests/:questId/fail', requireAuth, QuestController.failQuest);
 
 // ============================================================================
 // Boss Routes
@@ -57,27 +72,111 @@ router.get('/bosses/active', optionalAuth, BossController.getActiveBoss);
 // Get boss participants (public)
 router.get('/bosses/:bossId/participants', optionalAuth, BossController.getBossParticipants);
 
-// Attack a boss (requires authentication)
-router.post('/bosses/:bossId/attack', isAuthenticated, BossController.attackBoss);
+// Attack a boss (requires authentication + whitelist)
+router.post('/bosses/:bossId/attack', requireAuth, BossController.attackBoss);
 
 // Spawn a boss (admin only - TODO: add admin middleware)
-router.post('/bosses/spawn', isAuthenticated, BossController.spawnBoss);
+router.post('/bosses/spawn', requireAuth, BossController.spawnBoss);
 
 // ============================================================================
 // Daily Login Rewards Routes
 // ============================================================================
 
-// Check if user can claim daily reward (requires authentication)
-router.get('/daily/check', isAuthenticated, LoginController.checkDailyReward);
+// Check if user can claim daily reward (requires authentication + whitelist)
+router.get('/daily/check', requireAuth, LoginController.checkDailyReward);
 
-// Claim daily reward (requires authentication)
-router.post('/daily/claim', isAuthenticated, LoginController.claimDailyReward);
+// Claim daily reward (requires authentication + whitelist)
+router.post('/daily/claim', requireAuth, LoginController.claimDailyReward);
 
 // Get all reward tiers (public)
 router.get('/daily/rewards', LoginController.getAllRewards);
 
-// Get user's login statistics (requires authentication)
-router.get('/daily/stats', isAuthenticated, LoginController.getLoginStats);
+// Get user's login statistics (requires authentication + whitelist)
+router.get('/daily/stats', requireAuth, LoginController.getLoginStats);
+
+// ============================================================================
+// Travel Routes
+// ============================================================================
+
+// Start travel to a new server (requires authentication + whitelist)
+router.post('/travel', requireAuth, async (req, res) => {
+    try {
+        const { destination } = req.body;
+        const userId = req.user.discord_id;
+
+        if (!destination) {
+            return res.status(400).json({
+                success: false,
+                message: 'Destination server ID is required'
+            });
+        }
+
+        const { db } = require('../../database/schema');
+        const { UserModel } = require('../../database/models');
+
+        const user = UserModel.findByDiscordId(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Check if already traveling
+        const now = Math.floor(Date.now() / 1000);
+        if (user.traveling && user.travel_arrives_at > now) {
+            return res.status(400).json({
+                success: false,
+                message: 'You are already traveling'
+            });
+        }
+
+        // Start travel (5 minutes)
+        const travelTime = 300; // 5 minutes in seconds
+        const arrivesAt = now + travelTime;
+
+        db.prepare(`
+            UPDATE users
+            SET traveling = 1,
+                travel_destination = ?,
+                travel_arrives_at = ?,
+                current_server = COALESCE(current_server, ?)
+            WHERE discord_id = ?
+        `).run(destination, arrivesAt, user.current_server || destination, userId);
+
+        res.json({
+            success: true,
+            data: {
+                destination,
+                arrivesAt,
+                travelTime
+            },
+            message: 'Travel started successfully'
+        });
+    } catch (error) {
+        console.error('Error starting travel:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to start travel'
+        });
+    }
+});
+
+// ============================================================================
+// Achievement Routes
+// ============================================================================
+
+// Get achievement statistics (requires authentication + whitelist) - MUST come before /achievements
+router.get('/achievements/stats', requireAuth, AchievementController.getAchievementStats);
+
+// Get recently unlocked achievements (requires authentication + whitelist) - MUST come before /achievements
+router.get('/achievements/recent', requireAuth, AchievementController.getRecentlyUnlocked);
+
+// Get achievements by category (requires authentication + whitelist) - MUST come before /achievements
+router.get('/achievements/category/:category', requireAuth, AchievementController.getAchievementsByCategory);
+
+// Get all achievements for authenticated user (requires authentication + whitelist)
+router.get('/achievements', requireAuth, AchievementController.getUserAchievements);
 
 // ============================================================================
 // Health Check

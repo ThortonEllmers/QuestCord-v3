@@ -178,11 +178,48 @@ function optionalAuth(req, res, next) {
     next();
 }
 
+/**
+ * Middleware to check if user is whitelisted during testing mode
+ * Should be used after isAuthenticated middleware
+ */
+function isWhitelisted(req, res, next) {
+    const config = require('../../../config.json');
+
+    // If testing mode is disabled, allow all authenticated users
+    if (!config.webDashboard || !config.webDashboard.testingMode) {
+        return next();
+    }
+
+    // Check if user's Discord ID is in the whitelist
+    const whitelist = config.webDashboard.whitelist || [];
+    const userDiscordId = req.user?.discord_id;
+
+    if (!userDiscordId) {
+        return res.status(401).json({
+            success: false,
+            error: 'Unauthorized',
+            message: 'User not authenticated'
+        });
+    }
+
+    if (!whitelist.includes(userDiscordId)) {
+        return res.status(403).json({
+            success: false,
+            error: 'Access Denied',
+            message: 'Web dashboard is currently in testing mode. Your account is not whitelisted for access.'
+        });
+    }
+
+    // User is whitelisted, proceed
+    next();
+}
+
 module.exports = {
     initializeDiscordOAuth,
     generateJWT,
     verifyJWT,
     isAuthenticated,
     optionalAuth,
+    isWhitelisted,
     passport
 };

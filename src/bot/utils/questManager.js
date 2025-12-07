@@ -31,7 +31,10 @@ class QuestManager {
 
             QuestModel.deleteExpired();
 
-            const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+            // Calculate next midnight NZ time
+            const nzNow = moment.tz('Pacific/Auckland');
+            const nextMidnight = nzNow.clone().add(1, 'day').startOf('day');
+            const expiresAt = Math.floor(nextMidnight.valueOf() / 1000);
 
             for (const server of servers) {
                 const quests = getRandomQuests(config.quest.questsPerServer);
@@ -71,7 +74,11 @@ class QuestManager {
             }
 
             const quests = getRandomQuests(config.quest.questsPerServer);
-            const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+
+            // Calculate next midnight NZ time
+            const nzNow = moment.tz('Pacific/Auckland');
+            const nextMidnight = nzNow.clone().add(1, 'day').startOf('day');
+            const expiresAt = Math.floor(nextMidnight.valueOf() / 1000);
 
             for (const quest of quests) {
                 QuestModel.create(
