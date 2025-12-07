@@ -37,7 +37,23 @@ async function deployCommands() {
         const commandsPath = path.join(__dirname, 'commands');
         const commands = loadCommands(commandsPath);
 
+        // Check for duplicate command names
+        const commandNames = commands.map(cmd => cmd.name);
+        const duplicates = commandNames.filter((name, index) => commandNames.indexOf(name) !== index);
+
+        if (duplicates.length > 0) {
+            const uniqueDuplicates = [...new Set(duplicates)];
+            console.error('\n❌ DUPLICATE COMMAND NAMES FOUND:');
+            uniqueDuplicates.forEach(dupName => {
+                console.error(`   - "${dupName}" appears multiple times`);
+            });
+            console.error('\nAll commands being loaded:');
+            commands.forEach((cmd, i) => console.error(`   ${i}. ${cmd.name}`));
+            throw new Error(`Duplicate command names: ${uniqueDuplicates.join(', ')}`);
+        }
+
         console.log(`Started refreshing ${commands.length} application (/) commands.`);
+        console.log('Command names:', commandNames.join(', '));
 
         const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
