@@ -576,6 +576,13 @@ function initializeDatabase() {
         console.log('Unique index created for vanity_url');
     }
 
+    // Add verified column to users
+    if (!userTableInfoPhase1.some(col => col.name === 'verified')) {
+        console.log('Running migration: Adding verified to users...');
+        db.exec('ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0');
+        console.log('Migration completed: verified added');
+    }
+
     console.log('Phase 1 migrations completed successfully');
 
     // Migration: Create solitary_confinement table

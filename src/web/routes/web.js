@@ -205,15 +205,205 @@ router.get('/', checkMaintenanceMode, async (req, res) => {
 // Serve Vue app for dashboard routes
 const path = require('path');
 const fs = require('fs');
+const { UserModel } = require('../../database/models');
 
-router.get(['/dashboard', '/quests', '/bosses', '/profile', '/profile/:userId', '/login'], (req, res) => {
+// Special handler for profile pages to inject Open Graph meta tags
+router.get('/profile/:userId', (req, res) => {
     const appPath = path.join(__dirname, '../../../public/app/index.html');
 
     // Check if the built app exists
-    if (fs.existsSync(appPath)) {
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        // Try to get user data
+        let user = null;
+        const userId = req.params.userId;
+
+        // Check if userId is a vanity URL first
+        const { db } = require('../../database/schema');
+        user = db.prepare('SELECT * FROM users WHERE vanity_url = ?').get(userId);
+
+        // If not found, try as Discord ID
+        if (!user) {
+            user = UserModel.findByDiscordId(userId);
+        }
+
+        // Read the HTML file
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        if (user) {
+            // Generate avatar URL
+            let avatarUrl = 'https://questcord.fun/images/logo.png';
+            if (user.avatar_hash) {
+                avatarUrl = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.avatar_hash}.png?size=256`;
+            }
+
+            // Create meta tags
+            const verifiedBadge = user.verified ? ' ✓' : '';
+            const title = `${user.username}${verifiedBadge}'s Profile - QuestCord`;
+            const description = `Level ${user.level} | ${user.currency.toLocaleString()} Dakari | ${user.quests_completed || 0} Quests Completed | ${user.bosses_defeated || 0} Bosses Defeated`;
+            const url = `https://questcord.fun/profile/${userId}`;
+
+            const metaTags = `
+    <meta property="og:type" content="profile">
+    <meta property="og:title" content="${title}">
+    <meta property="og:description" content="${description}">
+    <meta property="og:url" content="${url}">
+    <meta property="og:image" content="${avatarUrl}">
+    <meta property="og:site_name" content="QuestCord">
+    <meta property="profile:username" content="${user.username}">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="${title}">
+    <meta name="twitter:description" content="${description}">
+    <meta name="twitter:image" content="${avatarUrl}">
+
+    <meta name="theme-color" content="#5865F2">
+    <title>${title}</title>`;
+
+            // Inject meta tags into the HTML (before </head>)
+            html = html.replace('</head>', `${metaTags}\n  </head>`);
+        }
+
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving profile page:', error);
         res.sendFile(appPath);
-    } else {
-        res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+});
+
+// Helper function to inject meta tags into HTML
+function injectMetaTags(html, title, description, url, image = 'https://questcord.fun/images/logo.png') {
+    const metaTags = `
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="${title}">
+    <meta property="og:description" content="${description}">
+    <meta property="og:url" content="${url}">
+    <meta property="og:image" content="${image}">
+    <meta property="og:site_name" content="QuestCord">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${title}">
+    <meta name="twitter:description" content="${description}">
+    <meta name="twitter:image" content="${image}">
+
+    <meta name="theme-color" content="#5865F2">
+    <title>${title}</title>`;
+
+    return html.replace('</head>', `${metaTags}\n  </head>`);
+}
+
+// Dashboard page
+router.get('/dashboard', (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        const stats = GlobalStatsModel.get();
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        const title = 'Dashboard - QuestCord';
+        const description = `Your QuestCord RPG Dashboard | ${stats.total_servers.toLocaleString()} Servers | ${stats.total_users.toLocaleString()} Players | ${stats.total_quests_completed.toLocaleString()} Quests Completed`;
+        const url = 'https://questcord.fun/dashboard';
+
+        html = injectMetaTags(html, title, description, url);
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving dashboard:', error);
+        res.sendFile(appPath);
+    }
+});
+
+// Quests page
+router.get('/quests', (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        const title = 'Available Quests - QuestCord';
+        const description = 'Explore available quests in QuestCord! Complete daily, weekly, and special quests to earn rewards, level up, and climb the leaderboard.';
+        const url = 'https://questcord.fun/quests';
+
+        html = injectMetaTags(html, title, description, url);
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving quests page:', error);
+        res.sendFile(appPath);
+    }
+});
+
+// Bosses page
+router.get('/bosses', (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        const title = 'Boss Battles - QuestCord';
+        const description = 'Challenge powerful bosses in QuestCord! Team up with other players to defeat epic bosses and earn legendary rewards.';
+        const url = 'https://questcord.fun/bosses';
+
+        html = injectMetaTags(html, title, description, url);
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving bosses page:', error);
+        res.sendFile(appPath);
+    }
+});
+
+// Daily rewards page
+router.get('/daily', (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        const title = 'Daily Login Rewards - QuestCord';
+        const description = 'Claim your daily login rewards in QuestCord! Build your streak for bigger rewards including currency, items, and exclusive bonuses.';
+        const url = 'https://questcord.fun/daily';
+
+        html = injectMetaTags(html, title, description, url);
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving daily page:', error);
+        res.sendFile(appPath);
+    }
+});
+
+// Home/Profile/Login fallback
+router.get(['/profile', '/login', '/'], (req, res) => {
+    const appPath = path.join(__dirname, '../../../public/app/index.html');
+    if (!fs.existsSync(appPath)) {
+        return res.status(404).send('Dashboard app not found. Please run: cd src/web/client && npm run build');
+    }
+
+    try {
+        const stats = GlobalStatsModel.get();
+        let html = fs.readFileSync(appPath, 'utf8');
+
+        const title = 'QuestCord - Quest Across the Discord Universe';
+        const description = `An immersive Discord RPG experience | ${stats.total_servers.toLocaleString()} Servers | ${stats.total_users.toLocaleString()} Players | Complete quests, defeat bosses, and climb the leaderboard!`;
+        const url = 'https://questcord.fun';
+
+        html = injectMetaTags(html, title, description, url);
+        res.send(html);
+    } catch (error) {
+        console.error('Error serving page:', error);
+        res.sendFile(appPath);
     }
 });
 

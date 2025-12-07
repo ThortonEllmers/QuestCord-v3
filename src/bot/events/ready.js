@@ -6,7 +6,7 @@ const { debugLogger } = require('../../utils/debugLogger');
 // List of commands to cycle through in rich presence
 const commands = [
     '/quests - View available quests',
-    '/complete - Complete a quest',
+    '/daily - Claim daily rewards',
     '/travel - Explore new servers',
     '/attack - Fight the boss',
     '/profile - View your stats',
@@ -15,7 +15,10 @@ const commands = [
     '/help - Get help',
     '/tutorial - Learn to play',
     '/boss - View boss status',
-    '/rank - Check your rank'
+    '/rank - Check your rank',
+    '/shop - Browse the shop',
+    '/inventory - View your items',
+    '/pvp - Challenge players'
 ];
 
 let currentCommandIndex = 0;

@@ -33,10 +33,11 @@ module.exports = {
         const rank = LeaderboardModel.getUserRank(user.id, now.getMonth() + 1, now.getFullYear());
         const levelTitle = LevelSystem.getLevelTitle(user.level);
         const progressBar = LevelSystem.getProgressBar(user.experience, LevelSystem.getRequiredExperience(user.level));
+        const verifiedBadge = user.verified ? ' ✓' : '';
 
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.primary)
-            .setTitle(`${targetUser.username}'s Profile`)
+            .setTitle(`${targetUser.username}${verifiedBadge}'s Profile`)
             .setDescription(`**${levelTitle}**`)
             .setThumbnail(targetUser.displayAvatarURL())
             .addFields(
