@@ -1,4 +1,5 @@
 const { DatabaseUtils } = require('./utils');
+const { db } = require('./schema');
 const cron = require('node-cron');
 
 class DatabaseMaintenance {
@@ -23,7 +24,30 @@ class DatabaseMaintenance {
             DatabaseUtils.optimize();
         });
 
+        // Clean up expired solitary confinements every minute
+        cron.schedule('* * * * *', () => {
+            this.cleanupExpiredConfinements();
+        });
+
         console.log('Database maintenance scheduler started');
+    }
+
+    static cleanupExpiredConfinements() {
+        try {
+            const now = Math.floor(Date.now() / 1000);
+
+            const result = db.prepare(`
+                UPDATE solitary_confinement
+                SET active = 0
+                WHERE active = 1 AND expires_at <= ?
+            `).run(now);
+
+            if (result.changes > 0) {
+                console.log(`[Confinement Cleanup] Deactivated ${result.changes} expired confinement(s)`);
+            }
+        } catch (error) {
+            console.error('Error cleaning up expired confinements:', error);
+        }
     }
 
     static runManualMaintenance() {

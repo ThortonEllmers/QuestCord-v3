@@ -1,9 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { BossModel, BossParticipantModel, UserModel, LeaderboardModel } = require('../../database/models');
-const { BossManager } = require('../utils/bossManager');
-const { LevelSystem } = require('../../utils/levelSystem');
+const BossService = require('../../services/gameEngine/BossService');
+const { UserModel } = require('../../database/models');
 const config = require('../../../config.json');
-const { debugLogger } = require('../../utils/debugLogger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -11,160 +9,89 @@ module.exports = {
         .setDescription('Attack the active boss'),
 
     async execute(interaction) {
-        const boss = BossModel.getActiveBoss();
+        await interaction.deferReply();
 
-        if (!boss) {
-            return interaction.reply({
-                content: 'There is no active boss to attack right now. Check back later.',
-                ephemeral: true
-            });
-        }
+        // Attack boss using BossService
+        const attackResult = await BossService.attackBoss(interaction.user.id, null, 'discord');
 
-        const status = BossManager.getBossStatus(boss);
+        if (!attackResult.success) {
+            let errorMessage = `❌ ${attackResult.error}`;
 
-        if (!status.isAlive) {
-            return interaction.reply({
-                content: 'This boss has already been defeated.',
-                ephemeral: true
-            });
-        }
-
-        let user = UserModel.findByDiscordId(interaction.user.id);
-        if (!user) {
-            UserModel.create(interaction.user.id, interaction.user.username);
-            user = UserModel.findByDiscordId(interaction.user.id);
-        }
-
-        // Check if user is traveling
-        const now = Math.floor(Date.now() / 1000);
-        if (user.traveling) {
-            const timeLeft = user.travel_arrives_at - now;
-
-            if (timeLeft > 0) {
+            // Handle specific error types
+            if (attackResult.type === 'traveling') {
+                const timeLeft = attackResult.data.timeLeft;
                 const minutes = Math.floor(timeLeft / 60);
                 const seconds = timeLeft % 60;
-
-                return interaction.reply({
-                    content: `🚢 You're currently traveling to **${user.travel_destination}**! You can't fight bosses while on the road.\n\n⏱️ Arrival in: **${minutes}m ${seconds}s**`,
-                    ephemeral: true
-                });
-            } else {
-                // Travel completed, clear the traveling status
-                UserModel.completeTravel(interaction.user.id);
-                user = UserModel.findByDiscordId(interaction.user.id);
+                errorMessage = `🚢 You're currently traveling to **${attackResult.data.destination}**! You can't fight bosses while on the road.\n\n⏱️ Arrival in: **${minutes}m ${seconds}s**`;
             }
+
+            return interaction.editReply({ content: errorMessage });
         }
 
-        const baseDamage = 100;
-        const randomFactor = Math.random() * 0.5 + 0.75;
-        const damage = Math.floor(baseDamage * randomFactor);
+        // Attack successful - display results
+        const { boss, damage, bossDefeated, rewards, status } = attackResult.data;
 
-        BossParticipantModel.addParticipant(boss.id, user.id);
-        BossParticipantModel.addDamage(boss.id, user.id, damage);
-        BossModel.dealDamage(boss.id, damage);
-
-        const updatedBoss = BossModel.findById(boss.id);
-        const newStatus = BossManager.getBossStatus(updatedBoss);
-
-        if (updatedBoss.health <= 0 && !updatedBoss.defeated) {
-            BossModel.defeatBoss(boss.id);
-
-            // Announce boss defeat in the notification channel
-            const { BossManager } = require('../utils/bossManager');
-            await BossManager.announceBossDefeat(boss.id);
-
-            const participants = BossParticipantModel.getParticipants(boss.id);
-            const topDealer = BossParticipantModel.getTopDamageDealer(boss.id);
-
-            await debugLogger.success('BOSS', `Boss defeated: ${boss.boss_name}`, {
-                bossId: boss.id,
-                bossName: boss.boss_name,
-                totalParticipants: participants.length,
-                topDealer: topDealer ? topDealer.username : 'Unknown',
-                finalDamage: damage,
-                defeatedBy: interaction.user.username
-            });
-            const bossExp = LevelSystem.getBossExperience(boss.max_health);
-
-            for (const participant of participants) {
-                const isTopDealer = participant.user_id === topDealer.user_id;
-                const currencyReward = isTopDealer ? Math.floor(boss.reward_currency * 1.5) : boss.reward_currency;
-                const gemReward = isTopDealer ? Math.floor(boss.reward_gems * 1.5) : boss.reward_gems;
-                const expReward = isTopDealer ? Math.floor(bossExp * 1.5) : bossExp;
-
-                UserModel.updateCurrency(participant.discord_id, currencyReward);
-                UserModel.updateGems(participant.discord_id, gemReward);
-                UserModel.incrementBossesDefeated(participant.discord_id);
-
-                const participantUser = UserModel.findByDiscordId(participant.discord_id);
-                if (participantUser) {
-                    const levelResult = LevelSystem.addExperience(participantUser.level, participantUser.experience, participantUser.total_experience, expReward);
-                    UserModel.updateLevel(participant.discord_id, levelResult.newLevel, levelResult.newCurrentExp, levelResult.newTotalExp);
-
-                    if (levelResult.leveledUp) {
-                        const rewards = LevelSystem.getLevelRewards(levelResult.newLevel);
-                        UserModel.updateCurrency(participant.discord_id, rewards.currency);
-                        UserModel.updateGems(participant.discord_id, rewards.gems);
-                    }
-                }
-
-                const now = new Date();
-                LeaderboardModel.updateScore(participant.user_id, currencyReward + (gemReward * 10), now.getMonth() + 1, now.getFullYear());
-            }
-
-            const isTopDealer = topDealer.user_id === user.id;
-            const userExpReward = isTopDealer ? Math.floor(bossExp * 1.5) : bossExp;
-
-            const updatedUser = UserModel.findByDiscordId(interaction.user.id);
-            const levelResult = LevelSystem.addExperience(updatedUser.level, updatedUser.experience, updatedUser.total_experience, userExpReward);
-
+        if (bossDefeated) {
+            // Boss was defeated
             const defeatEmbed = new EmbedBuilder()
                 .setColor(config.theme.colors.success)
-                .setTitle('Boss Defeated')
-                .setDescription(`**${boss.boss_name}** has been defeated!\n\nTop Damage Dealer: ${topDealer.username}`)
+                .setTitle('🎉 Boss Defeated!')
+                .setDescription(`**${boss.boss_name}** has been defeated!\n\nYour final blow dealt **${damage}** damage!`)
                 .addFields(
                     {
-                        name: 'Your Rewards',
-                        value: `+${isTopDealer ? Math.floor(boss.reward_currency * 1.5) : boss.reward_currency} Dakari\n+${isTopDealer ? Math.floor(boss.reward_gems * 1.5) : boss.reward_gems} gems\n+${userExpReward} XP`
+                        name: '💰 Your Rewards',
+                        value: `+${rewards.currency} Dakari\n+${rewards.gems} Gems\n+${rewards.experience} XP`,
+                        inline: true
                     },
                     {
-                        name: 'Total Participants',
-                        value: participants.length.toString()
+                        name: '👥 Participants',
+                        value: attackResult.data.participantCount?.toString() || '1',
+                        inline: true
                     }
                 );
 
-            if (levelResult.leveledUp) {
+            if (rewards.isTopDealer) {
                 defeatEmbed.addFields({
-                    name: `Level Up! ${updatedUser.level} → ${levelResult.newLevel}`,
-                    value: `You reached level ${levelResult.newLevel}!`
+                    name: '🏆 Top Damage Dealer Bonus',
+                    value: 'You dealt the most damage! +50% rewards',
+                    inline: false
+                });
+            }
+
+            if (attackResult.data.leveledUp) {
+                defeatEmbed.addFields({
+                    name: `⬆️ Level Up! ${attackResult.data.oldLevel} → ${attackResult.data.newLevel}`,
+                    value: `You reached level ${attackResult.data.newLevel}!`,
+                    inline: false
                 });
             }
 
             defeatEmbed.setFooter({ text: 'The next boss will spawn soon' })
                 .setTimestamp();
 
-            return interaction.reply({ embeds: [defeatEmbed] });
+            return interaction.editReply({ embeds: [defeatEmbed] });
         }
 
+        // Boss still alive
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.warning)
-            .setTitle(`Attacking ${boss.boss_name}`)
-            .setDescription(`You dealt ${damage} damage`)
+            .setTitle(`⚔️ Attacking ${boss.boss_name}`)
+            .setDescription(`You dealt **${damage}** damage!`)
             .addFields(
                 {
-                    name: 'Boss Health',
-                    value: `${updatedBoss.health.toLocaleString()} / ${boss.max_health.toLocaleString()} (${newStatus.healthPercent}%)`,
+                    name: '❤️ Boss Health',
+                    value: `${boss.health.toLocaleString()} / ${boss.max_health.toLocaleString()} (${status.healthPercent}%)`,
                     inline: true
                 },
                 {
-                    name: 'Time Remaining',
-                    value: `${newStatus.minutesRemaining} minutes`,
+                    name: '⏱️ Time Remaining',
+                    value: `${status.minutesRemaining} minutes`,
                     inline: true
                 }
             )
-            .setFooter({ text: 'Keep attacking to defeat the boss' })
+            .setFooter({ text: 'Keep attacking to defeat the boss!' })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     }
 };

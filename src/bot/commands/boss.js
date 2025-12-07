@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { BossModel, BossParticipantModel } = require('../../database/models');
-const { BossManager } = require('../utils/bossManager');
+const BossService = require('../../services/gameEngine/BossService');
+const { BossModel } = require('../../database/models');
 const { isStaff } = require('../utils/permissions');
 const config = require('../../../config.json');
 
@@ -32,17 +32,17 @@ module.exports = {
 };
 
 async function handleStatus(interaction) {
-        const boss = BossModel.getActiveBoss();
+        // Get active boss using BossService
+        const bossResult = await BossService.getActiveBoss('discord');
 
-        if (!boss) {
+        if (!bossResult.success || !bossResult.data) {
             return interaction.reply({
                 content: 'There is no active boss right now. Check back later.',
                 ephemeral: true
             });
         }
 
-        const status = BossManager.getBossStatus(boss);
-        const participants = BossParticipantModel.getParticipants(boss.id);
+        const { boss, status, participants } = bossResult.data;
         const topDamagers = participants.slice(0, 5);
 
         const embed = new EmbedBuilder()

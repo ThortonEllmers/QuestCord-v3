@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { QuestModel, UserModel, UserQuestModel, ServerModel } = require('../../database/models');
-const { QuestManager } = require('../utils/questManager');
+const QuestService = require('../../services/gameEngine/QuestService');
+const { UserModel } = require('../../database/models');
 const config = require('../../../config.json');
 
 module.exports = {
@@ -16,22 +16,37 @@ module.exports = {
             });
         }
 
-        const server = ServerModel.findByDiscordId(interaction.guild.id);
-        if (!server || !server.opted_in) {
+        // Get active quests using QuestService
+        const questsResult = await QuestService.getActiveQuests(interaction.guild.id, 'discord');
+
+        if (!questsResult.success) {
+            if (questsResult.type === 'not_opted_in') {
+                return interaction.reply({
+                    content: 'This server has not opted in to the quest system. Ask a server administrator to use `/optin`.',
+                    ephemeral: true
+                });
+            }
+
             return interaction.reply({
-                content: 'This server has not opted in to the quest system. Ask a server administrator to use `/optin`.',
+                content: `❌ Error: ${questsResult.error}`,
                 ephemeral: true
             });
         }
 
-        let quests = QuestModel.getActiveQuestsByServer(interaction.guild.id);
+        const quests = questsResult.data;
 
-        if (quests.length === 0) {
-            quests = QuestManager.assignInitialQuests(interaction.guild.id, interaction.guild.name);
+        // Get user quests and completed count
+        const user = UserModel.findByDiscordId(interaction.user.id);
+        let userQuestData = { quests: [], completedCount: 0 };
+
+        if (user) {
+            const userQuestsResult = await QuestService.getUserQuests(interaction.user.id, interaction.guild.id, 'discord');
+            if (userQuestsResult.success) {
+                userQuestData = userQuestsResult.data;
+            }
         }
 
-        const user = UserModel.findByDiscordId(interaction.user.id);
-        const completedCount = user ? UserQuestModel.getCompletedCount(user.id, interaction.guild.id) : 0;
+        const completedCount = userQuestData.completedCount;
 
         const embed = new EmbedBuilder()
             .setColor(config.theme.colors.primary)
@@ -64,7 +79,7 @@ module.exports = {
                 'social': '💬'
             }[quest.type] || '📋';
 
-            const userQuest = user ? UserQuestModel.getUserQuests(user.id, interaction.guild.id).find(uq => uq.quest_id === quest.id) : null;
+            const userQuest = userQuestData.quests.find(uq => uq.quest_id === quest.id);
             const status = userQuest?.completed ? ' ✅' : (userQuest?.failed ? ' ❌ FAILED' : '');
 
             embed.addFields({

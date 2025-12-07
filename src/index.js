@@ -23,6 +23,10 @@ async function main() {
 
         DatabaseMaintenance.start();
 
+        console.log('Deploying slash commands...');
+        const { deployCommands } = require('./bot/deploy-commands');
+        await deployCommands();
+
         console.log('Starting Discord bot...');
         const client = new BotClient();
 
@@ -96,5 +100,6 @@ process.on('SIGTERM', async () => {
 main();
 
 module.exports = { getReportingInstance };
+
 
 

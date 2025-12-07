@@ -22,15 +22,20 @@ function Write-Header {
 }
 
 function Get-QuestCordProcesses {
-    $processes = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
-        $_.CommandLine -like "*QuestCord*" -or
-        $_.CommandLine -like "*start.js*" -or
-        $_.CommandLine -like "*src\index.js*" -or
-        $_.CommandLine -like "*src/index.js*" -or
-        $_.CommandLine -like "*src\web\server.js*" -or
-        $_.CommandLine -like "*src/web/server.js*" -or
-        $_.CommandLine -like "*src\bot*" -or
-        $_.CommandLine -like "*src/bot*"
+    $processes = @()
+    try {
+        $processes = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
+            $_.CommandLine -like "*QuestCord*" -or
+            $_.CommandLine -like "*start.js*" -or
+            $_.CommandLine -like "*src\index.js*" -or
+            $_.CommandLine -like "*src/index.js*" -or
+            $_.CommandLine -like "*src\web\server.js*" -or
+            $_.CommandLine -like "*src/web/server.js*" -or
+            $_.CommandLine -like "*src\bot*" -or
+            $_.CommandLine -like "*src/bot*"
+        }
+    } catch {
+        # Ignore errors
     }
     return $processes
 }
@@ -218,9 +223,9 @@ function Show-Menu {
 
     Write-ColorText "MAIN MENU" "Cyan"
     Write-ColorText "═══════════════════════════════════════════════════" "Cyan"
-    Write-Host "  [1] Start Bot & Webserver"
-    Write-Host "  [2] Stop Bot & Webserver"
-    Write-Host "  [3] Restart Bot & Webserver"
+    Write-Host "  [1] Start Bot and Webserver"
+    Write-Host "  [2] Stop Bot and Webserver"
+    Write-Host "  [3] Restart Bot and Webserver"
     Write-Host "  [4] View Logs"
     Write-Host "  [5] Install Dependencies"
     Write-Host "  [6] Deploy Discord Commands"
@@ -244,7 +249,7 @@ while ($true) {
         "6" { Deploy-Commands }
         "0" {
             Write-Header
-            Write-ColorText "Goodbye! 👋" "Green"
+            Write-ColorText "Goodbye!" "Green"
             Write-Host ""
             exit
         }

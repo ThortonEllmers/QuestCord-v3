@@ -578,6 +578,30 @@ function initializeDatabase() {
 
     console.log('Phase 1 migrations completed successfully');
 
+    // Migration: Create solitary_confinement table
+    const confinementTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='solitary_confinement'").get();
+
+    if (!confinementTableExists) {
+        console.log('Running migration: Creating solitary_confinement table...');
+        db.exec(`
+            CREATE TABLE solitary_confinement (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                server_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                moderator_id TEXT NOT NULL,
+                reason TEXT,
+                expires_at INTEGER NOT NULL,
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                active INTEGER DEFAULT 1
+            );
+
+            CREATE INDEX idx_confinement_user_server ON solitary_confinement(user_id, server_id, active);
+            CREATE INDEX idx_confinement_expires ON solitary_confinement(expires_at, active);
+        `);
+        console.log('✓ solitary_confinement table created');
+    }
+
     console.log('Database initialized successfully');
 
     // Seed items if this is first run
