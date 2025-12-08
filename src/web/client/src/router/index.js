@@ -35,6 +35,11 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/guilds',
+    name: 'Guilds',
+    component: () => import('../views/Guilds.vue')
+  },
+  {
     path: '/daily',
     name: 'Daily',
     component: () => import('../views/Daily.vue')

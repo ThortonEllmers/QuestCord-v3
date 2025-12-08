@@ -3,6 +3,7 @@ const { UserModel, LeaderboardModel } = require('../../database/models');
 const { LevelSystem } = require('../../utils/levelSystem');
 const { db } = require('../../database/schema');
 const config = require('../../../config.json');
+const GuildService = require('../../services/gameEngine/GuildService');
 
 async function handlePvpAccept(interaction, challengeKey, activeChallenges, arenaeBattles) {
     const challenge = activeChallenges.get(challengeKey);
@@ -34,6 +35,12 @@ async function handlePvpAccept(interaction, challengeKey, activeChallenges, aren
     const challengerStats = await getPlayerStats(challenger);
     const opponentStats = await getPlayerStats(opponent);
 
+    // Apply guild bonuses to max health
+    const challengerGuildBonus = GuildService.getGuildBonus(challenge.challenger.id);
+    const opponentGuildBonus = GuildService.getGuildBonus(challenge.opponent.id);
+    const challengerMaxHealth = Math.floor(challenger.max_health * challengerGuildBonus);
+    const opponentMaxHealth = Math.floor(opponent.max_health * opponentGuildBonus);
+
     // Create battle - Randomly decide who goes first for fairness
     const randomFirst = Math.random() < 0.5 ? 'challenger' : 'opponent';
     const battleId = `${challenge.challenger.id}_${challenge.opponent.id}_${Date.now()}`;
@@ -43,8 +50,8 @@ async function handlePvpAccept(interaction, challengeKey, activeChallenges, aren
             id: challenge.challenger.id,
             username: challenge.challenger.username,
             dbId: challenger.id,
-            maxHealth: challenger.max_health,
-            currentHealth: challenger.max_health,
+            maxHealth: challengerMaxHealth,
+            currentHealth: challengerMaxHealth,
             attack: challengerStats.attack,
             defense: challengerStats.defense,
             crit: challengerStats.crit
@@ -53,8 +60,8 @@ async function handlePvpAccept(interaction, challengeKey, activeChallenges, aren
             id: challenge.opponent.id,
             username: challenge.opponent.username,
             dbId: opponent.id,
-            maxHealth: opponent.max_health,
-            currentHealth: opponent.max_health,
+            maxHealth: opponentMaxHealth,
+            currentHealth: opponentMaxHealth,
             attack: opponentStats.attack,
             defense: opponentStats.defense,
             crit: opponentStats.crit
@@ -307,9 +314,16 @@ async function getPlayerStats(user) {
         WHERE ui.user_id = ? AND i.item_type = 'armor' AND ui.equipped = 1
     `).get(user.id);
 
+    // Calculate base stats
+    const baseAttack = user.attack + (weapon?.attack_power || 0);
+    const baseDefense = user.defense + (weapon?.defense_power || 0) + (armor?.defense_power || 0);
+
+    // Apply guild bonuses
+    const guildBonus = GuildService.getGuildBonus(user.discord_id);
+
     return {
-        attack: user.attack + (weapon?.attack_power || 0),
-        defense: user.defense + (weapon?.defense_power || 0) + (armor?.defense_power || 0),
+        attack: Math.floor(baseAttack * guildBonus),
+        defense: Math.floor(baseDefense * guildBonus),
         crit: weapon?.crit_chance || 0
     };
 }

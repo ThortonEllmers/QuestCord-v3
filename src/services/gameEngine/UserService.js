@@ -65,11 +65,29 @@ class UserService extends BaseService {
             // Get user inventory count
             const inventory = InventoryModel ? InventoryModel.getUserInventory(user.id) : [];
 
+            // Get user's guild information
+            const { GuildModel } = require('../../database/models');
+            const userGuild = GuildModel.getUserGuild(user.id);
+            let guildInfo = null;
+            if (userGuild) {
+                const guild = GuildModel.findById(userGuild.id);
+                if (guild) {
+                    guildInfo = {
+                        id: guild.id,
+                        name: guild.name,
+                        tag: guild.tag,
+                        level: guild.level,
+                        role: userGuild.role
+                    };
+                }
+            }
+
             this.log('getUserProfile', { identifier, source });
 
             return this.success({
                 ...user,
-                inventoryCount: inventory.length
+                inventoryCount: inventory.length,
+                guild: guildInfo
             }, 'User profile retrieved');
         } catch (error) {
             return this.handleError(error, 'getUserProfile');

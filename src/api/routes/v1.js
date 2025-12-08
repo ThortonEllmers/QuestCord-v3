@@ -6,6 +6,7 @@ const QuestController = require('../controllers/QuestController');
 const BossController = require('../controllers/BossController');
 const LoginController = require('../controllers/LoginController');
 const AchievementController = require('../controllers/AchievementController');
+const GuildController = require('../controllers/GuildController');
 
 // Combined middleware: authenticate AND check whitelist
 const requireAuth = [isAuthenticated, isWhitelisted];
@@ -177,6 +178,52 @@ router.get('/achievements/category/:category', requireAuth, AchievementControlle
 
 // Get all achievements for authenticated user (requires authentication + whitelist)
 router.get('/achievements', requireAuth, AchievementController.getUserAchievements);
+
+// ============================================================================
+// Guild Routes
+// ============================================================================
+
+// Get user's guild (requires authentication + whitelist)
+router.get('/guilds/me', requireAuth, GuildController.getMyGuild);
+
+// Get pending invites (requires authentication + whitelist)
+router.get('/guilds/invites', requireAuth, GuildController.getInvites);
+
+// Get all guilds for a server (public)
+router.get('/guilds', optionalAuth, GuildController.getGuilds);
+
+// Get guild details (public)
+router.get('/guilds/:guildId', optionalAuth, GuildController.getGuild);
+
+// Create guild (requires authentication + whitelist)
+router.post('/guilds', requireAuth, GuildController.createGuild);
+
+// Invite user to guild (requires authentication + whitelist)
+router.post('/guilds/:guildId/invite', requireAuth, GuildController.inviteUser);
+
+// Join guild via invite (requires authentication + whitelist)
+router.post('/guilds/join', requireAuth, GuildController.joinGuild);
+
+// Join public guild (requires authentication + whitelist)
+router.post('/guilds/:guildId/join-public', requireAuth, GuildController.joinPublicGuild);
+
+// Leave guild (requires authentication + whitelist)
+router.post('/guilds/leave', requireAuth, GuildController.leaveGuild);
+
+// Contribute to guild (requires authentication + whitelist)
+router.post('/guilds/contribute', requireAuth, GuildController.contribute);
+
+// Upgrade guild member slots (requires authentication + whitelist)
+router.post('/guilds/upgrade/slots', requireAuth, GuildController.upgradeSlots);
+
+// Upgrade guild level (requires authentication + whitelist)
+router.post('/guilds/upgrade/level', requireAuth, GuildController.upgradeLevel);
+
+// Get guild leaderboards (public)
+router.get('/guilds/leaderboard', optionalAuth, GuildController.getLeaderboard);
+
+// Get guild rank (public)
+router.get('/guilds/:guildId/rank', optionalAuth, GuildController.getGuildRank);
 
 // ============================================================================
 // Health Check

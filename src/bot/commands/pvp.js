@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { UserModel } = require('../../database/models');
 const { db } = require('../../database/schema');
 const config = require('../../../config.json');
+const GuildService = require('../../services/gameEngine/GuildService');
 
 // Track active PVP challenges and arena battles
 const activeChallenges = new Map(); // challengerId_opponentId -> { challenger, opponent, timestamp }
@@ -241,10 +242,19 @@ async function handleStats(interaction) {
         WHERE ui.user_id = ? AND i.item_type = 'armor' AND ui.equipped = 1
     `).get(user.id);
 
-    // Calculate total stats from base + weapon + armor
-    const totalAttack = user.attack + (equippedWeapon?.attack_power || 0) + (equippedArmor?.attack_power || 0);
-    const totalDefense = user.defense + (equippedWeapon?.defense_power || 0) + (equippedArmor?.defense_power || 0);
-    const totalCrit = (equippedWeapon?.crit_chance || 0) + (equippedArmor?.crit_chance || 0);
+    // Calculate base stats from equipment
+    const baseAttack = user.attack + (equippedWeapon?.attack_power || 0) + (equippedArmor?.attack_power || 0);
+    const baseDefense = user.defense + (equippedWeapon?.defense_power || 0) + (equippedArmor?.defense_power || 0);
+    const baseCrit = (equippedWeapon?.crit_chance || 0) + (equippedArmor?.crit_chance || 0);
+    const baseHealth = user.max_health;
+
+    // Apply guild bonuses to combat stats
+    const guildBonus = GuildService.getGuildBonus(targetUser.id);
+    const guildBonusInfo = GuildService.getGuildBonusInfo(targetUser.id);
+
+    const totalAttack = Math.floor(baseAttack * guildBonus);
+    const totalDefense = Math.floor(baseDefense * guildBonus);
+    const totalHealth = Math.floor(baseHealth * guildBonus);
 
     const embed = new EmbedBuilder()
         .setColor(config.theme.colors.primary)
@@ -268,8 +278,13 @@ async function handleStats(interaction) {
             },
             {
                 name: 'Combat Stats',
-                value: `⚔️ Attack: ${totalAttack}\n🛡️ Defense: ${totalDefense}\n✨ Crit: ${totalCrit}%\n❤️ Health: ${user.health}/${user.max_health}`,
+                value: `⚔️ Attack: ${totalAttack}${guildBonusInfo.hasGuild ? ` (+${guildBonusInfo.bonus}%)` : ''}\n🛡️ Defense: ${totalDefense}${guildBonusInfo.hasGuild ? ` (+${guildBonusInfo.bonus}%)` : ''}\n✨ Crit: ${baseCrit}%\n❤️ Health: ${user.health}/${totalHealth}${guildBonusInfo.hasGuild ? ` (+${guildBonusInfo.bonus}%)` : ''}`,
                 inline: true
+            },
+            {
+                name: guildBonusInfo.hasGuild ? `🏰 Guild: ${guildBonusInfo.guildName}` : 'Guild',
+                value: guildBonusInfo.hasGuild ? `Level ${guildBonusInfo.guildLevel} (+${guildBonusInfo.bonus}% to all stats)` : 'Not in a guild',
+                inline: false
             },
             {
                 name: 'Equipped Weapon',

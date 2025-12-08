@@ -1,5 +1,6 @@
 const { BaseService, ValidationError, NotFoundError } = require('./BaseService');
 const { db } = require('../../database/schema');
+const GuildService = require('./GuildService');
 
 /**
  * LoginService - Handles daily login rewards and streak tracking
@@ -105,7 +106,16 @@ class LoginService extends BaseService {
 
             // Get reward for current day
             const rewardDay = (newStreak - 1) % 7 + 1;
-            const reward = this.getRewardForDay(rewardDay);
+            const baseReward = this.getRewardForDay(rewardDay);
+
+            // Get user's Discord ID for guild bonus calculation
+            const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+            const guildBonus = GuildService.getGuildBonus(user.discord_id);
+            const guildBonusInfo = GuildService.getGuildBonusInfo(user.discord_id);
+
+            // Apply guild bonus to rewards
+            const finalCurrency = Math.floor(baseReward.currency * guildBonus);
+            const finalGems = Math.floor(baseReward.gems * guildBonus);
 
             // Update streak in transaction
             const transaction = db.transaction(() => {
@@ -129,22 +139,22 @@ class LoginService extends BaseService {
                     WHERE id = ?
                 `).run(now, newStreak, userId);
 
-                // Award currency if applicable
-                if (reward.currency > 0) {
+                // Award currency if applicable (with guild bonus)
+                if (finalCurrency > 0) {
                     db.prepare(`
                         UPDATE users
                         SET currency = currency + ?
                         WHERE id = ?
-                    `).run(reward.currency, userId);
+                    `).run(finalCurrency, userId);
                 }
 
-                // Award gems if applicable
-                if (reward.gems > 0) {
+                // Award gems if applicable (with guild bonus)
+                if (finalGems > 0) {
                     db.prepare(`
                         UPDATE users
                         SET gems = gems + ?
                         WHERE id = ?
-                    `).run(reward.gems, userId);
+                    `).run(finalGems, userId);
                 }
 
                 // Award item if applicable (would need inventory system)
@@ -153,33 +163,49 @@ class LoginService extends BaseService {
 
             transaction();
 
+            // Build claim message
+            let claimMessage = `Day ${rewardDay} reward claimed! Streak: ${newStreak} days`;
+            if (guildBonusInfo.hasGuild && guildBonusInfo.bonus > 0) {
+                claimMessage += ` (+${guildBonusInfo.bonus}% guild bonus)`;
+            }
+
             // Emit event
             this.emitEvent('login:daily_claimed', {
                 userId,
                 source,
                 rewardDay,
-                reward,
+                baseReward,
+                finalReward: {
+                    currency: finalCurrency,
+                    gems: finalGems
+                },
+                guildBonus: guildBonusInfo.bonus,
                 newStreak,
                 longestStreak,
                 totalLogins
             });
 
             // Get updated user
-            const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+            const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
             return this.success({
                 rewardDay,
-                reward,
+                baseReward,
+                finalReward: {
+                    currency: finalCurrency,
+                    gems: finalGems
+                },
+                guildBonus: guildBonusInfo.bonus,
                 streak: {
                     current: newStreak,
                     longest: longestStreak,
                     total: totalLogins
                 },
                 user: {
-                    currency: user.currency,
-                    gems: user.gems
+                    currency: updatedUser.currency,
+                    gems: updatedUser.gems
                 }
-            }, `Day ${rewardDay} reward claimed! Streak: ${newStreak} days`);
+            }, claimMessage);
 
         } catch (error) {
             return this.handleError(error, 'claimDailyReward');

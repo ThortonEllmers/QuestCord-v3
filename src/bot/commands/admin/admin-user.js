@@ -102,6 +102,50 @@ module.exports = {
                         .setRequired(true)
                 )
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('give')
+                .setDescription('Give Dakari and/or gems to a user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to give currency to')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('dakari')
+                        .setDescription('Amount of Dakari to give')
+                        .setRequired(false)
+                        .setMinValue(1)
+                )
+                .addIntegerOption(option =>
+                    option.setName('gems')
+                        .setDescription('Amount of gems to give')
+                        .setRequired(false)
+                        .setMinValue(1)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('remove')
+                .setDescription('Remove Dakari and/or gems from a user')
+                .addUserOption(option =>
+                    option.setName('user')
+                        .setDescription('The user to remove currency from')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('dakari')
+                        .setDescription('Amount of Dakari to remove')
+                        .setRequired(false)
+                        .setMinValue(1)
+                )
+                .addIntegerOption(option =>
+                    option.setName('gems')
+                        .setDescription('Amount of gems to remove')
+                        .setRequired(false)
+                        .setMinValue(1)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
@@ -140,6 +184,12 @@ module.exports = {
                 break;
             case 'toggle-pvp':
                 await handleTogglePvp(interaction, targetUser, user);
+                break;
+            case 'give':
+                await handleGiveCurrency(interaction, targetUser, user);
+                break;
+            case 'remove':
+                await handleRemoveCurrency(interaction, targetUser, user);
                 break;
         }
     }
@@ -364,6 +414,125 @@ async function handleTogglePvp(interaction, targetUser, user) {
         console.log(`[USER-ADMIN] PVP toggled by ${interaction.user.username} for ${targetUser.username}`);
     } catch (error) {
         console.error('Error toggling PVP:', error);
+        await interaction.reply({ content: 'An error occurred.', ephemeral: true });
+    }
+}
+
+async function handleGiveCurrency(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({ content: '❌ This user has no data in the system.', ephemeral: true });
+    }
+
+    const dakari = interaction.options.getInteger('dakari') || 0;
+    const gems = interaction.options.getInteger('gems') || 0;
+
+    if (dakari === 0 && gems === 0) {
+        return interaction.reply({
+            content: '❌ You must specify at least some Dakari or gems to give.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const oldCurrency = user.currency;
+        const oldGems = user.gems;
+
+        if (dakari > 0) {
+            UserModel.updateCurrency(user.discord_id, dakari);
+        }
+        if (gems > 0) {
+            UserModel.updateGems(user.discord_id, gems);
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.success)
+            .setTitle('💰 Currency Given')
+            .setDescription(`Currency added to ${targetUser.username}'s account`);
+
+        if (dakari > 0) {
+            embed.addFields({
+                name: 'Dakari',
+                value: `${oldCurrency.toLocaleString()} → ${(oldCurrency + dakari).toLocaleString()} (+${dakari.toLocaleString()})`,
+                inline: true
+            });
+        }
+
+        if (gems > 0) {
+            embed.addFields({
+                name: 'Gems',
+                value: `${oldGems.toLocaleString()} → ${(oldGems + gems).toLocaleString()} (+${gems.toLocaleString()})`,
+                inline: true
+            });
+        }
+
+        embed.addFields({ name: 'Staff Member', value: `${interaction.user.username}` })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[USER-ADMIN] Currency given by ${interaction.user.username} to ${targetUser.username}: ${dakari} Dakari, ${gems} gems`);
+    } catch (error) {
+        console.error('Error giving currency:', error);
+        await interaction.reply({ content: 'An error occurred.', ephemeral: true });
+    }
+}
+
+async function handleRemoveCurrency(interaction, targetUser, user) {
+    if (!user) {
+        return interaction.reply({ content: '❌ This user has no data in the system.', ephemeral: true });
+    }
+
+    const dakari = interaction.options.getInteger('dakari') || 0;
+    const gems = interaction.options.getInteger('gems') || 0;
+
+    if (dakari === 0 && gems === 0) {
+        return interaction.reply({
+            content: '❌ You must specify at least some Dakari or gems to remove.',
+            ephemeral: true
+        });
+    }
+
+    try {
+        const oldCurrency = user.currency;
+        const oldGems = user.gems;
+
+        if (dakari > 0) {
+            UserModel.updateCurrency(user.discord_id, -dakari);
+        }
+        if (gems > 0) {
+            UserModel.updateGems(user.discord_id, -gems);
+        }
+
+        const newCurrency = Math.max(0, oldCurrency - dakari);
+        const newGems = Math.max(0, oldGems - gems);
+
+        const embed = new EmbedBuilder()
+            .setColor(config.theme.colors.warning)
+            .setTitle('💸 Currency Removed')
+            .setDescription(`Currency removed from ${targetUser.username}'s account`);
+
+        if (dakari > 0) {
+            embed.addFields({
+                name: 'Dakari',
+                value: `${oldCurrency.toLocaleString()} → ${newCurrency.toLocaleString()} (-${dakari.toLocaleString()})`,
+                inline: true
+            });
+        }
+
+        if (gems > 0) {
+            embed.addFields({
+                name: 'Gems',
+                value: `${oldGems.toLocaleString()} → ${newGems.toLocaleString()} (-${gems.toLocaleString()})`,
+                inline: true
+            });
+        }
+
+        embed.addFields({ name: 'Staff Member', value: `${interaction.user.username}` })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        console.log(`[USER-ADMIN] Currency removed by ${interaction.user.username} from ${targetUser.username}: ${dakari} Dakari, ${gems} gems`);
+    } catch (error) {
+        console.error('Error removing currency:', error);
         await interaction.reply({ content: 'An error occurred.', ephemeral: true });
     }
 }

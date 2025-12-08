@@ -65,6 +65,8 @@
   },
   "webDashboard": {
     "testingMode": true,
-    "whitelist": []
+    "whitelist": [
+      "378501056008683530"
+    ]
   }
 }

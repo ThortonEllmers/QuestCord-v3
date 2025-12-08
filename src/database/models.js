@@ -755,6 +755,249 @@ class PVPModel {
     }
 }
 
+class GuildModel {
+    static create(name, tag, description, leaderId, serverId, isPublic = 0) {
+        const stmt = db.prepare(`
+            INSERT INTO guilds (name, tag, description, leader_id, server_id, public)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        return stmt.run(name, tag, description, leaderId, serverId, isPublic ? 1 : 0);
+    }
+
+    static findById(guildId) {
+        const stmt = db.prepare('SELECT * FROM guilds WHERE id = ?');
+        return stmt.get(guildId);
+    }
+
+    static findByName(name) {
+        const stmt = db.prepare('SELECT * FROM guilds WHERE name = ? COLLATE NOCASE');
+        return stmt.get(name);
+    }
+
+    static findByTag(tag) {
+        const stmt = db.prepare('SELECT * FROM guilds WHERE tag = ? COLLATE NOCASE');
+        return stmt.get(tag);
+    }
+
+    static findByServerId(serverId) {
+        const stmt = db.prepare('SELECT * FROM guilds WHERE server_id = ? ORDER BY level DESC, experience DESC');
+        return stmt.all(serverId);
+    }
+
+    static addMember(guildId, userId, role = 'member') {
+        const stmt = db.prepare(`
+            INSERT INTO guild_members (guild_id, user_id, role)
+            VALUES (?, ?, ?)
+        `);
+        return stmt.run(guildId, userId, role);
+    }
+
+    static removeMember(guildId, userId) {
+        const stmt = db.prepare('DELETE FROM guild_members WHERE guild_id = ? AND user_id = ?');
+        return stmt.run(guildId, userId);
+    }
+
+    static getMember(guildId, userId) {
+        const stmt = db.prepare('SELECT * FROM guild_members WHERE guild_id = ? AND user_id = ?');
+        return stmt.get(guildId, userId);
+    }
+
+    static getMembers(guildId) {
+        const stmt = db.prepare(`
+            SELECT gm.*, u.discord_id, u.username, u.level, u.experience
+            FROM guild_members gm
+            JOIN users u ON gm.user_id = u.id
+            WHERE gm.guild_id = ?
+            ORDER BY gm.role DESC, gm.contribution_currency DESC
+        `);
+        return stmt.all(guildId);
+    }
+
+    static getMemberCount(guildId) {
+        const stmt = db.prepare('SELECT COUNT(*) as count FROM guild_members WHERE guild_id = ?');
+        return stmt.get(guildId).count;
+    }
+
+    static getUserGuild(userId) {
+        const stmt = db.prepare(`
+            SELECT g.*, gm.role, gm.contribution_currency, gm.contribution_gems
+            FROM guilds g
+            JOIN guild_members gm ON g.id = gm.guild_id
+            WHERE gm.user_id = ?
+        `);
+        return stmt.get(userId);
+    }
+
+    static updateRole(guildId, userId, newRole) {
+        const stmt = db.prepare('UPDATE guild_members SET role = ? WHERE guild_id = ? AND user_id = ?');
+        return stmt.run(newRole, guildId, userId);
+    }
+
+    static addContribution(guildId, userId, currency = 0, gems = 0) {
+        const stmt = db.prepare(`
+            UPDATE guild_members
+            SET contribution_currency = contribution_currency + ?,
+                contribution_gems = contribution_gems + ?
+            WHERE guild_id = ? AND user_id = ?
+        `);
+        return stmt.run(currency, gems, guildId, userId);
+    }
+
+    static updateTreasury(guildId, currency = 0, gems = 0) {
+        const stmt = db.prepare(`
+            UPDATE guilds
+            SET treasury_currency = treasury_currency + ?,
+                treasury_gems = treasury_gems + ?,
+                updated_at = strftime('%s', 'now')
+            WHERE id = ?
+        `);
+        return stmt.run(currency, gems, guildId);
+    }
+
+    static updateLeader(guildId, newLeaderId) {
+        const stmt = db.prepare('UPDATE guilds SET leader_id = ?, updated_at = strftime(\'%s\', \'now\') WHERE id = ?');
+        return stmt.run(newLeaderId, guildId);
+    }
+
+    static updatePrivacy(guildId, isPublic) {
+        const stmt = db.prepare('UPDATE guilds SET public = ?, updated_at = strftime(\'%s\', \'now\') WHERE id = ?');
+        return stmt.run(isPublic ? 1 : 0, guildId);
+    }
+
+    static delete(guildId) {
+        const stmt = db.prepare('DELETE FROM guilds WHERE id = ?');
+        return stmt.run(guildId);
+    }
+
+    static createInvite(guildId, inviterId, inviteeId, expiresAt) {
+        const stmt = db.prepare(`
+            INSERT INTO guild_invites (guild_id, inviter_id, invitee_id, expires_at)
+            VALUES (?, ?, ?, ?)
+        `);
+        return stmt.run(guildId, inviterId, inviteeId, expiresAt);
+    }
+
+    static getPendingInvites(userId) {
+        const now = Math.floor(Date.now() / 1000);
+        const stmt = db.prepare(`
+            SELECT gi.*, g.name as guild_name, u.username as inviter_name
+            FROM guild_invites gi
+            JOIN guilds g ON gi.guild_id = g.id
+            JOIN users u ON gi.inviter_id = u.id
+            WHERE gi.invitee_id = ? AND gi.status = 'pending' AND gi.expires_at > ?
+        `);
+        return stmt.all(userId, now);
+    }
+
+    static updateInviteStatus(inviteId, status) {
+        const stmt = db.prepare('UPDATE guild_invites SET status = ? WHERE id = ?');
+        return stmt.run(status, inviteId);
+    }
+
+    static getTopGuildsByLevel(limit = 10) {
+        const stmt = db.prepare(`
+            SELECT g.*,
+                   (SELECT COUNT(*) FROM guild_members WHERE guild_id = g.id) as member_count,
+                   u.username as leader_name
+            FROM guilds g
+            JOIN users u ON g.leader_id = u.id
+            ORDER BY g.level DESC, g.experience DESC
+            LIMIT ?
+        `);
+        return stmt.all(limit);
+    }
+
+    static getTopGuildsByTreasury(limit = 10) {
+        const stmt = db.prepare(`
+            SELECT g.*,
+                   (SELECT COUNT(*) FROM guild_members WHERE guild_id = g.id) as member_count,
+                   u.username as leader_name,
+                   (g.treasury_currency + g.treasury_gems * 10) as total_wealth
+            FROM guilds g
+            JOIN users u ON g.leader_id = u.id
+            ORDER BY total_wealth DESC
+            LIMIT ?
+        `);
+        return stmt.all(limit);
+    }
+
+    static getTopGuildsByMembers(limit = 10) {
+        const stmt = db.prepare(`
+            SELECT g.*,
+                   (SELECT COUNT(*) FROM guild_members WHERE guild_id = g.id) as member_count,
+                   u.username as leader_name
+            FROM guilds g
+            JOIN users u ON g.leader_id = u.id
+            ORDER BY member_count DESC, g.level DESC
+            LIMIT ?
+        `);
+        return stmt.all(limit);
+    }
+
+    static getGuildRank(guildId) {
+        // Get guild's rank by level
+        const stmt = db.prepare(`
+            SELECT COUNT(*) + 1 as rank
+            FROM guilds g1
+            WHERE (g1.level > (SELECT level FROM guilds WHERE id = ?))
+               OR (g1.level = (SELECT level FROM guilds WHERE id = ?)
+                   AND g1.experience > (SELECT experience FROM guilds WHERE id = ?))
+        `);
+        return stmt.get(guildId, guildId, guildId).rank;
+    }
+
+    static updateMemberRole(guildId, userId, newRole) {
+        const stmt = db.prepare(`
+            UPDATE guild_members
+            SET role = ?
+            WHERE guild_id = ? AND user_id = ?
+        `);
+        return stmt.run(newRole, guildId, userId);
+    }
+
+    static updateGuild(guildId, updates) {
+        const fields = [];
+        const values = [];
+
+        if (updates.description !== undefined) {
+            fields.push('description = ?');
+            values.push(updates.description);
+        }
+
+        if (updates.public !== undefined) {
+            fields.push('public = ?');
+            values.push(updates.public);
+        }
+
+        if (updates.leader_id !== undefined) {
+            fields.push('leader_id = ?');
+            values.push(updates.leader_id);
+        }
+
+        if (fields.length === 0) return;
+
+        values.push(guildId);
+        const stmt = db.prepare(`
+            UPDATE guilds
+            SET ${fields.join(', ')}
+            WHERE id = ?
+        `);
+        return stmt.run(...values);
+    }
+
+    static deleteGuild(guildId) {
+        // Delete all invites first
+        db.prepare('DELETE FROM guild_invites WHERE guild_id = ?').run(guildId);
+
+        // Delete all members
+        db.prepare('DELETE FROM guild_members WHERE guild_id = ?').run(guildId);
+
+        // Delete the guild
+        const stmt = db.prepare('DELETE FROM guilds WHERE id = ?');
+        return stmt.run(guildId);
+    }
+}
+
 module.exports = {
     UserModel,
     ServerModel,
@@ -771,5 +1014,6 @@ module.exports = {
     BannedIPModel,
     EquipmentModel,
     PVPModel,
-    WebsiteSettingsModel
+    WebsiteSettingsModel,
+    GuildModel
 };

@@ -3,6 +3,7 @@ const { QuestModel, UserQuestModel, UserModel, ServerModel } = require('../../da
 const { getRandomQuests } = require('../../bot/utils/questData');
 const config = require('../../../config.json');
 const AchievementService = require('./AchievementService');
+const GuildService = require('./GuildService');
 
 /**
  * QuestService - Handles all quest-related game logic
@@ -220,9 +221,18 @@ class QuestService extends BaseService {
             // Mark quest as completed
             UserQuestModel.completeQuest(user.id, questId);
 
-            // Award rewards
-            UserModel.updateCurrency(userId, quest.reward_currency);
-            UserModel.updateGems(userId, quest.reward_gems);
+            // Apply guild bonus to rewards
+            const guildBonus = GuildService.getGuildBonus(userId);
+            const guildBonusInfo = GuildService.getGuildBonusInfo(userId);
+
+            const baseCurrency = quest.reward_currency;
+            const baseGems = quest.reward_gems;
+            const finalCurrency = Math.floor(baseCurrency * guildBonus);
+            const finalGems = Math.floor(baseGems * guildBonus);
+
+            // Award rewards with guild bonus applied
+            UserModel.updateCurrency(userId, finalCurrency);
+            UserModel.updateGems(userId, finalGems);
             UserModel.incrementQuestCount(userId);
             ServerModel.incrementQuestCount(quest.server_id);
 
@@ -236,13 +246,22 @@ class QuestService extends BaseService {
                 updatedUser.quests_completed
             );
 
+            // Build completion message
+            let message = `Quest completed! You earned ${finalCurrency.toLocaleString()} Dakari and ${finalGems} gems!`;
+            if (guildBonusInfo.hasGuild && guildBonusInfo.bonus > 0) {
+                message += ` (${guildBonusInfo.bonus}% guild bonus from ${guildBonusInfo.guildName})`;
+            }
+
             // Emit event
             this.emitUserEvent(userId, 'quest:completed', {
                 questId,
                 questName: quest.quest_name,
                 rewards: {
-                    currency: quest.reward_currency,
-                    gems: quest.reward_gems
+                    baseCurrency,
+                    baseGems,
+                    finalCurrency,
+                    finalGems,
+                    guildBonus: guildBonusInfo.bonus
                 },
                 newTotals: {
                     currency: updatedUser.currency,
@@ -252,16 +271,19 @@ class QuestService extends BaseService {
                 source
             });
 
-            this.log('completeQuest', { userId, questId, rewards: { currency: quest.reward_currency, gems: quest.reward_gems }, source });
+            this.log('completeQuest', { userId, questId, rewards: { finalCurrency, finalGems, guildBonus: guildBonusInfo.bonus }, source });
 
             return this.success({
                 quest,
                 rewards: {
-                    currency: quest.reward_currency,
-                    gems: quest.reward_gems
+                    baseCurrency,
+                    baseGems,
+                    finalCurrency,
+                    finalGems,
+                    guildBonus: guildBonusInfo.bonus
                 },
                 user: updatedUser,
-                message: `Quest completed! You earned ${quest.reward_currency} Dakari and ${quest.reward_gems} gems!`
+                message
             }, 'Quest completed successfully');
         } catch (error) {
             return this.handleError(error, 'completeQuest');

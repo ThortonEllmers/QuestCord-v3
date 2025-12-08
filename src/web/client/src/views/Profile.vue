@@ -133,7 +133,7 @@ function formatNumber(num) {
           <router-link to="/dashboard" class="btn btn-primary">Dashboard</router-link>
           <router-link to="/quests" class="btn btn-secondary">Quests</router-link>
           <router-link to="/bosses" class="btn btn-secondary">Bosses</router-link>
-          <router-link to="/profile" class="btn btn-secondary">My Profile</router-link>
+          <router-link to="/guilds" class="btn btn-secondary">Guilds</router-link>
           <button v-if="authStore.isAuthenticated" @click="authStore.logout()" class="btn btn-secondary" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border: none;">Logout</button>
           <button v-else @click="authStore.login()" class="btn btn-secondary" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border: none;">Login</button>
         </div>
@@ -190,6 +190,17 @@ function formatNumber(num) {
                 </span>
                 <span>{{ userStore.profileData.username }}</span>
               </h1>
+
+              <!-- Guild Tag -->
+              <div v-if="userStore.profileData.guild" class="mb-2 flex items-center gap-2 justify-center md:justify-start">
+                <span class="text-sm text-gray-400">🏰</span>
+                <router-link :to="`/guilds`" class="text-lg font-semibold text-primary hover:text-primary/80 transition-colors">
+                  [{{ userStore.profileData.guild.tag }}] {{ userStore.profileData.guild.name }}
+                </router-link>
+                <span class="text-xs text-gray-500 px-2 py-1 bg-dark-700 rounded">
+                  Lv {{ userStore.profileData.guild.level }}
+                </span>
+              </div>
 
               <!-- Bio -->
               <p v-if="!isEditing && userStore.profileData.profile_bio" class="text-gray-400 mb-4">

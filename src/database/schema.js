@@ -693,6 +693,97 @@ function initializeDatabase() {
         console.log('✓ solitary_confinement table created');
     }
 
+    // Guild/Clan System Tables
+    const guildsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='guilds'").get();
+    if (!guildsTableExists) {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS guilds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                tag TEXT UNIQUE NOT NULL,
+                description TEXT,
+                leader_id INTEGER NOT NULL,
+                server_id TEXT NOT NULL,
+                level INTEGER DEFAULT 1,
+                experience INTEGER DEFAULT 0,
+                treasury_currency INTEGER DEFAULT 0,
+                treasury_gems INTEGER DEFAULT 0,
+                max_members INTEGER DEFAULT 20,
+                public INTEGER DEFAULT 0,
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+                FOREIGN KEY (leader_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_guilds_server_id ON guilds(server_id);
+            CREATE INDEX IF NOT EXISTS idx_guilds_leader_id ON guilds(leader_id);
+            CREATE INDEX IF NOT EXISTS idx_guilds_name ON guilds(name);
+            CREATE INDEX IF NOT EXISTS idx_guilds_tag ON guilds(tag);
+
+            CREATE TABLE IF NOT EXISTS guild_members (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT DEFAULT 'member',
+                contribution_currency INTEGER DEFAULT 0,
+                contribution_gems INTEGER DEFAULT 0,
+                joined_at INTEGER DEFAULT (strftime('%s', 'now')),
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(guild_id, user_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_guild_members_guild_id ON guild_members(guild_id);
+            CREATE INDEX IF NOT EXISTS idx_guild_members_user_id ON guild_members(user_id);
+
+            CREATE TABLE IF NOT EXISTS guild_invites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                inviter_id INTEGER NOT NULL,
+                invitee_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                expires_at INTEGER NOT NULL,
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE,
+                FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (invitee_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_guild_invites_guild_id ON guild_invites(guild_id);
+            CREATE INDEX IF NOT EXISTS idx_guild_invites_invitee_id ON guild_invites(invitee_id);
+            CREATE INDEX IF NOT EXISTS idx_guild_invites_status ON guild_invites(status);
+
+            CREATE TABLE IF NOT EXISTS guild_activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                activity_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                user_id INTEGER,
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_guild_activity_log_guild_id ON guild_activity_log(guild_id);
+            CREATE INDEX IF NOT EXISTS idx_guild_activity_log_created_at ON guild_activity_log(created_at);
+
+            CREATE TABLE IF NOT EXISTS guild_announcements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                author_id INTEGER NOT NULL,
+                title TEXT,
+                message TEXT NOT NULL,
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE,
+                FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_guild_announcements_guild_id ON guild_announcements(guild_id);
+            CREATE INDEX IF NOT EXISTS idx_guild_announcements_created_at ON guild_announcements(created_at);
+        `);
+        console.log('✓ guild tables created');
+    }
+
     console.log('Database initialized successfully');
 
     // Seed items if this is first run

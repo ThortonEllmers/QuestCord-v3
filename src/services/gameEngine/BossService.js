@@ -4,6 +4,7 @@ const { getRandomBoss } = require('../../bot/utils/questData');
 const { LevelSystem } = require('../../utils/levelSystem');
 const config = require('../../../config.json');
 const AchievementService = require('./AchievementService');
+const GuildService = require('./GuildService');
 
 /**
  * BossService - Handles all boss-related game logic
@@ -218,10 +219,12 @@ class BossService extends BaseService {
                 };
             }
 
-            // Calculate damage
+            // Calculate damage with guild bonus
             const baseDamage = 100;
             const randomFactor = Math.random() * 0.5 + 0.75; // 0.75 to 1.25
-            const damage = Math.floor(baseDamage * randomFactor);
+            const guildBonus = GuildService.getGuildBonus(userId);
+            const guildBonusInfo = GuildService.getGuildBonusInfo(userId);
+            const damage = Math.floor(baseDamage * randomFactor * guildBonus);
 
             // Add participant and damage
             BossParticipantModel.addParticipant(boss.id, user.id);
@@ -241,6 +244,7 @@ class BossService extends BaseService {
                 bossId: boss.id,
                 bossName: boss.boss_name,
                 damage,
+                guildBonus: guildBonusInfo.bonus,
                 remainingHealth: updatedBoss.health,
                 source
             });
@@ -258,14 +262,21 @@ class BossService extends BaseService {
                 }, 'Boss defeated!');
             }
 
-            this.log('attackBoss', { userId, bossId: boss.id, damage, remainingHealth: updatedBoss.health, source });
+            this.log('attackBoss', { userId, bossId: boss.id, damage, guildBonus: guildBonusInfo.bonus, remainingHealth: updatedBoss.health, source });
+
+            // Build attack message with guild bonus
+            let attackMessage = `Dealt ${damage} damage!`;
+            if (guildBonusInfo.hasGuild && guildBonusInfo.bonus > 0) {
+                attackMessage += ` (+${guildBonusInfo.bonus}% guild bonus)`;
+            }
 
             return this.success({
                 boss: updatedBoss,
                 damage,
+                guildBonus: guildBonusInfo.bonus,
                 remainingHealth: updatedBoss.health,
                 status: this.calculateBossStatus(updatedBoss)
-            }, `Dealt ${damage} damage!`);
+            }, attackMessage);
         } catch (error) {
             return this.handleError(error, 'attackBoss');
         }
